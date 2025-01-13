@@ -1,0 +1,15 @@
+<?php
+
+$sell = SellData::getById($_GET["id"]);
+$operations = OperationData::getAllProductsBySellId($_GET["id"]);
+
+foreach ($operations as $op) {
+	$op->del();
+}
+
+$sell->del();
+$sell->delPay();
+ print "<script>window.location='index.php?view=expenses';</script>";
+//Core::redir("./index.php?view=expenses");
+
+?>
