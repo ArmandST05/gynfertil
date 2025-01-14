@@ -2,7 +2,6 @@
 
 include "controller/Core.php";
 include "controller/View.php";
-include "controller/Api.php";
 include "controller/Module.php";
 include "controller/Database.php";
 include "controller/Executor.php";

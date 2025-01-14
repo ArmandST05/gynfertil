@@ -1,6 +1,6 @@
 <?php
 $product = ProductData::getById($_GET["id"]);
-$categories = ExpenseCategoryData::getAll();
+$categories = CategoryData::getAll();
 
 if($product!=null):
 ?>
@@ -79,9 +79,9 @@ if($product!=null):
     </div>
   </div>
   <div class="form-group">
-    <label for="inputEmail1" class="col-lg-3 control-label">Mínimo en inventario:</label>
+    <label for="inputEmail1" class="col-lg-3 control-label">Minima en inventario:</label>
     <div class="col-md-8">
-      <input type="text" name="minimum_inventory" class="form-control" value="<?php echo $product->minimum_inventory;?>" id="inputEmail1" placeholder="Mínimo en Inventario (Default 10)">
+      <input type="text" name="inventary_min" class="form-control" value="<?php echo $product->inventary_min;?>" id="inputEmail1" placeholder="Minima en Inventario (Default 10)">
     </div>
   </div>
 

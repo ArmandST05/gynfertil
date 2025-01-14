@@ -1,4 +1,6 @@
 <?php
+
+
 // 13 de Abril del 2014
 // View.php
 // @brief Una vista corresponde a cada componente visual dentro de un modulo.
@@ -28,7 +30,7 @@ class View {
 			}
 				include $url;				
 			}else{
-				View::Error("<b>404 NOT FOUND</b> View <b>".$_GET['view']."</b> folder !! - <a href='http://www.v2technoconsulting.com/v2technoconsulting/index.html' target='_blank'>Technoconsulting</a>");
+				View::Error("<b>404 NOT FOUND</b> View <b>".$_GET['view']."</b> folder !! - <a href='https://www.v2technoconsulting.com' target='_blank'>Technoconsulting</a>");
 			}
 
 

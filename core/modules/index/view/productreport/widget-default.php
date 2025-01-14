@@ -49,7 +49,7 @@ if($product!=null):
 	<div class="col-md-12">
 		<?php if(isset($_GET["sd"]) && isset($_GET["ed"]) ):?>
 <?php if($_GET["sd"]!=""&&$_GET["ed"]!=""):?>
-			<?php $operations = OperationDetailData::getAllByDateOfficialBP($_GET["id"], $_GET["sd"],$_GET["ed"]);
+			<?php $operations = OperationData::getAllByDateOfficialBP($_GET["id"], $_GET["sd"],$_GET["ed"]);
 			 ?>
 
 			 <?php if(count($operations)>0):?>

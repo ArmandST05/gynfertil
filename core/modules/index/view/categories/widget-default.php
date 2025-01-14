@@ -7,7 +7,7 @@
 <br>
 		<?php
 
-		$users = ExpenseCategoryData::getAll();
+		$users = CategoryData::getAll();
 		if(count($users)>0){
 			// si hay usuarios
 			?>

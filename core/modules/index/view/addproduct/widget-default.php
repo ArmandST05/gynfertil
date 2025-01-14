@@ -10,14 +10,14 @@ if(count($_POST)>0){
   $product->unit = $_POST["unit"];
   $product->description = $_POST["description"];
   $product->presentation = $_POST["presentation"];
-  //$product->minimum_inventory = $_POST["minimum_inventory"];
+  //$product->inventary_min = $_POST["inventary_min"];
   $category_id="NULL";
   if($_POST["category_id"]!=""){ $category_id=$_POST["category_id"];}
-  $minimum_inventory="\"\"";
-  if($_POST["minimum_inventory"]!=""){ $minimum_inventory=$_POST["minimum_inventory"];}
+  $inventary_min="\"\"";
+  if($_POST["inventary_min"]!=""){ $inventary_min=$_POST["inventary_min"];}
 
   $product->category_id=$category_id;
-  $product->minimum_inventory=$minimum_inventory;
+  $product->inventary_min=$inventary_min;
   $product->user_id = $_SESSION["user_id"];
 
 
@@ -43,7 +43,7 @@ if(count($_POST)>0){
 
 
 if($_POST["q"]!="" || $_POST["q"]!="0"){
- $op = new OperationDetailData();
+ $op = new OperationData();
  $op->product_id = $prod[1] ;
  $op->operation_type_id=OperationTypeData::getByName("entrada")->id;
  $op->q= $_POST["q"];

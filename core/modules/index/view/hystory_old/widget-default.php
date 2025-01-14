@@ -1,7 +1,7 @@
 <?php
 if(isset($_GET["product_id"])):
 $product = ProductData::getById($_GET["product_id"]);
-$operations = OperationDetailData::getAllByProductIdCutId($product->id,$cut->id);
+$operations = OperationData::getAllByProductIdCutId($product->id,$cut->id);
 ?>
 <div class="row">
 	<div class="col-md-12">
@@ -14,9 +14,9 @@ $operations = OperationDetailData::getAllByProductIdCutId($product->id,$cut->id)
 <div class="row">
 	<div class="col-md-4">
 	<?php
-$total = OperationDetailData::GetQ($product->id,$cut->id);
-$no_oficial = OperationDetailData::GetQNoF($product->id,$cut->id);
-$oficial = OperationDetailData::GetQYesF($product->id,$cut->id);
+$total = OperationData::GetQ($product->id,$cut->id);
+$no_oficial = OperationData::GetQNoF($product->id,$cut->id);
+$oficial = OperationData::getStockByProduct($product->id,$cut->id);
 
 $nof100=0;
 $of100 =0;
@@ -47,9 +47,9 @@ if($oficial>0){$of100 = $oficial/$total;}
 
 
 	<?php
-$itotal = OperationDetailData::GetInputQ($product->id,$cut->id);
-$ino_oficial = OperationDetailData::GetInputQNoF($product->id,$cut->id);
-$ioficial = OperationDetailData::GetInputQYesF($product->id,$cut->id);
+$itotal = OperationData::GetInputQ($product->id,$cut->id);
+$ino_oficial = OperationData::GetInputQNoF($product->id,$cut->id);
+$ioficial = OperationData::GetInputQYesF($product->id,$cut->id);
 
 $nof100=0;
 $of100 =0;
@@ -83,9 +83,9 @@ if($ioficial>0){$of100 = $ioficial/$itotal;}
 
 
 	<?php
-$ototal = -1*OperationDetailData::GetOutputQ($product->id,$cut->id);
-$ono_oficial = -1*OperationDetailData::GetOutputQNoF($product->id,$cut->id);
-$ooficial = -1*OperationDetailData::GetOutputQYesF($product->id,$cut->id);
+$ototal = -1*OperationData::GetOutputQ($product->id,$cut->id);
+$ono_oficial = -1*OperationData::GetOutputQNoF($product->id,$cut->id);
+$ooficial = -1*OperationData::GetOutputQYesF($product->id,$cut->id);
 
 $nof100=0;
 $of100 =0;

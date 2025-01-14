@@ -9,7 +9,7 @@
     <i class="fa fa-download"></i> Descargar <span class="caret"></span>
   </button>
   <ul class="dropdown-menu pull-right" role="menu">
-    <li><a href="reports/box-word.php?id=<?php echo $_GET["id"];?>">Word 2007 (.docx)</a></li>
+    <li><a href="index.php?view=reports/box-word&id=<?php echo $_GET["id"];?>">Word 2007 (.docx)</a></li>
   </ul>
 </div>
 </div>
@@ -18,7 +18,7 @@
 
 
 <?php
-$products = OperationData::getByBoxId($_GET["id"]);
+$products = SellData::getByBoxId($_GET["id"]);
 if(count($products)>0){
 $total_total = 0;
 ?>
@@ -37,7 +37,7 @@ $total_total = 0;
 
 
 <?php
-$operations = OperationDetailData::getAllProductsByOperationId($sell->id);
+$operations = OperationData::getAllProductsBySellId($sell->id);
 ?>
 </td>
 		<td>

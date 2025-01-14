@@ -5,7 +5,7 @@
 
 
 <?php
-$products = OperationData::getRes();
+$products = SellData::getRes();
 
 if(count($products)>0){
 	?>
@@ -26,7 +26,7 @@ if(count($products)>0){
 		<td>
 
 <?php
-$operations = OperationDetailData::getAllProductsByOperationId($sell->id);
+$operations = OperationData::getAllProductsBySellId($sell->id);
 echo count($operations);
 ?>
 		<td>

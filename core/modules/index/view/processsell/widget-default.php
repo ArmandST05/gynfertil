@@ -12,10 +12,10 @@ if(isset($_SESSION["cart"])){
 		foreach($cart as $c){
 
 			///
-			$q = OperationDetailData::getStockByProduct($c["product_id"]);
+			$q = OperationData::getStockByProduct($c["product_id"]);
 			if($c["q"]<=$q){
 				if(isset($_POST["is_oficial"])){
-				$qyf =OperationDetailData::getStockByProduct($c["product_id"]); /// son los productos que puedo facturar
+				$qyf =OperationData::getStockByProduct($c["product_id"]); /// son los productos que puedo facturar
 				if($c["q"]<=$qyf){
 					$num_succ++;
 				}else{
@@ -41,7 +41,7 @@ if($process==false){
 $_SESSION["errors"] = $errors;
 	?>	
 <script>
-	window.location="index.php?view=sell";
+	window.location="index.php?view=sales/new-details";
 </script>
 <?php
 }
@@ -56,7 +56,7 @@ $_SESSION["errors"] = $errors;
 
 //////////////////////////////////
 		if($process==true){
-			$sell = new OperationData();
+			$sell = new SellData();
 			$sell->user_id = $_SESSION["user_id"];
 
 			$sell->total = $_POST["total"];
@@ -74,7 +74,7 @@ $_SESSION["errors"] = $errors;
 		foreach($cart as  $c){
 
 
-			$op = new OperationDetailData();
+			$op = new OperationData();
 			 $op->product_id = $c["product_id"] ;
 			 $op->operation_type_id=OperationTypeData::getByName("salida")->id;
 			 $op->sell_id=$s[1];

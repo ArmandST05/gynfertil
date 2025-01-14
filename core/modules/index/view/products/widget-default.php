@@ -1,13 +1,13 @@
 <div class="row">
 	<div class="col-md-12">
 <div class="btn-group  pull-right">
-	<a href="index.php?view=products/new" class="btn btn-default">Agregar Producto</a>
+	<a href="index.php?view=newproduct" class="btn btn-default">Agregar Producto</a>
 <div class="btn-group pull-right">
   <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
     <i class="fa fa-download"></i> Descargar <span class="caret"></span>
   </button>
   <ul class="dropdown-menu" role="menu">
-    <li><a href="reports/products-word.php">Word 2007 (.docx)</a></li>
+    <li><a href="index.php?view=reports/products-word">Word 2007 (.docx)</a></li>
   </ul>
 </div>
 </div>
@@ -66,7 +66,7 @@ if($px<=$npaginas):
 		<th>Precio Entrada</th>
 		<th>Precio Salida</th>
 		<th>Categoria</th>
-		<th>Mínimo</th>
+		<th>Minima</th>
 		<th>Activo</th>
 		<th></th>
 	</thead>
@@ -82,7 +82,7 @@ if($px<=$npaginas):
 		<td>$ <?php echo number_format($product->price_in,2,'.',','); ?></td>
 		<td>$ <?php echo number_format($product->price_out,2,'.',','); ?></td>
 		<td><?php if($product->category_id!=null){echo $product->getCategory()->name;}else{ echo "<center>----</center>"; }  ?></td>
-		<td><?php echo $product->minimum_inventory; ?></td>
+		<td><?php echo $product->inventary_min; ?></td>
 		<td><?php if($product->is_active): ?><i class="fa fa-check"></i><?php endif;?></td>
 		
 

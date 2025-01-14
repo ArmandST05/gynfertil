@@ -6,7 +6,7 @@
     <i class="fa fa-download"></i> Descargar <span class="caret"></span>
   </button>
   <ul class="dropdown-menu" role="menu">
-    <li><a href="reports/boxhistory-word.php">Word 2007 (.docx)</a></li>
+    <li><a href="index.php?view=reports/boxhistory-word">Word 2007 (.docx)</a></li>
   </ul>
 </div>
 		<h1><i class='fa fa-archive'></i> Historial de Caja</h1>
@@ -15,7 +15,7 @@
 
 <?php
 $boxes = BoxData::getAll();
-$products = OperationData::getSellsUnBoxed();
+$products = SellData::getSellsUnBoxed();
 if(count($boxes)>0){
 $total_total = 0;
 ?>
@@ -27,7 +27,7 @@ $total_total = 0;
 		<th>Fecha</th>
 	</thead>
 	<?php foreach($boxes as $box):
-$sells = OperationData::getByBoxId($box->id);
+$sells = SellData::getByBoxId($box->id);
 
 	?>
 
@@ -40,7 +40,7 @@ $sells = OperationData::getByBoxId($box->id);
 <?php
 $total=0;
 foreach($sells as $sell){
-$operations = OperationDetailData::getAllProductsByOperationId($sell->id);
+$operations = OperationData::getAllProductsBySellId($sell->id);
 	foreach($operations as $operation){
 		$product  = $operation->getProduct();
 		$total += $operation->q*$product->price_out;

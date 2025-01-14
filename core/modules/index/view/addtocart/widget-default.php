@@ -16,7 +16,7 @@ if(!isset($_SESSION["cart"])){
 		foreach($cart as $c){
 
 			///
-			$q = OperationDetailData::getStockByProduct($c["product_id"]);
+			$q = OperationData::getStockByProduct($c["product_id"]);
 //			echo ">>".$q;
 			if($c["q"]<=$q){
 				$num_succ++;
@@ -39,7 +39,7 @@ if($process==false){
 $_SESSION["errors"] = $errors;
 	?>	
 <script>
-	window.location="index.php?view=sell";
+	window.location="index.php?view=sales/new-details";
 </script>
 <?php
 }
@@ -53,7 +53,7 @@ $found = false;
 $cart = $_SESSION["cart"];
 $index=0;
 
-$q = OperationDetailData::getStockByProduct($_POST["product_id"]);
+$q = OperationData::getStockByProduct($_POST["product_id"]);
 
 
 
@@ -71,7 +71,7 @@ if($can==false){
 $_SESSION["errors"] = $errors;
 	?>	
 <script>
-	window.location="index.php?view=sell";
+	window.location="index.php?view=sales/new-details";
 </script>
 <?php
 }
@@ -107,7 +107,7 @@ if($found==false){
 
 }
 }
- print "<script>window.location='index.php?view=sell';</script>";
+ print "<script>window.location='index.php?view=sales/new-details';</script>";
 // unset($_SESSION["cart"]);
 
 ?>

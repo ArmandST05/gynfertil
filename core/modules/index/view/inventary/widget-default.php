@@ -6,7 +6,7 @@
     <i class="fa fa-download"></i> Descargar <span class="caret"></span>
   </button>
   <ul class="dropdown-menu" role="menu">
-    <li><a href="reports/inventary-word.php">Word 2007 (.docx)</a></li>
+    <li><a href="index.php?view=reports/inventary-word">Word 2007 (.docx)</a></li>
   </ul>
 </div>
 		<h1><i class="glyphicon glyphicon-stats"></i> Inventario de Productos</h1>
@@ -63,9 +63,9 @@ if($px<=$npaginas):
 		<th></th>
 	</thead>
 	<?php foreach($curr_products as $product):
-	$q=OperationDetailData::getStockByProduct($product->id);
+	$q=OperationData::getStockByProduct($product->id);
 	?>
-	<tr class="<?php if($q<=$product->minimum_inventory/2){ echo "danger";}else if($q<=$product->minimum_inventory){ echo "warning";}?>">
+	<tr class="<?php if($q<=$product->inventary_min/2){ echo "danger";}else if($q<=$product->inventary_min){ echo "warning";}?>">
 		<td><?php echo $product->id; ?></td>
 		<td><?php echo $product->name; ?></td>
 		<td>
@@ -75,7 +75,7 @@ if($px<=$npaginas):
 		</td>
 		<td style="width:93px;">
 <!--		<a href="index.php?view=input&product_id=<?php echo $product->id; ?>" class="btn btn-xs btn-primary"><i class="glyphicon glyphicon-circle-arrow-up"></i> Alta</a>-->
-		<a href="index.php?view=history&product_id=<?php echo $product->id; ?>" class="btn btn-xs btn-success"><i class="glyphicon glyphicon-time"></i> Historial</a>
+		<a href="index.php?view=inventory/history&product_id=<?php echo $product->id; ?>" class="btn btn-xs btn-success"><i class="glyphicon glyphicon-time"></i> Historial</a>
 		</td>
 	</tr>
 	<?php endforeach;?>

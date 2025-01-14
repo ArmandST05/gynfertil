@@ -96,7 +96,7 @@ $product = ProductData::getById($p["product_id"]);
 
 <?php endforeach; ?>
 </table>
-<form method="post" class="form-horizontal" id="processsell" action="index.php?view=processsell">
+<form method="post" class="form-horizontal" id="processsell" action="index.php?action=sales/add">
 <h2>Resumen</h2>
 <div class="form-group">
     <label for="inputEmail1" class="col-lg-2 control-label">Cliente</label>

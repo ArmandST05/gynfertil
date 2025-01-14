@@ -69,10 +69,10 @@ $clients = PersonData::getClients();
 			$operations = array();
 
 			if($_GET["client_id"]==""){
-			$operations = OperationData::getAllByDateOp($_GET["sd"],$_GET["ed"],2);
+			$operations = SellData::getAllByDateOp($_GET["sd"],$_GET["ed"],2);
 			}
 			else{
-			$operations = OperationData::getAllByDateBCOp($_GET["client_id"],$_GET["sd"],$_GET["ed"],2);
+			$operations = SellData::getAllByDateBCOp($_GET["client_id"],$_GET["sd"],$_GET["ed"],2);
 			} 
 
 

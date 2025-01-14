@@ -1,7 +1,7 @@
 <?php
 
-$sell = OperationData::getById($_GET["id"]);
-$operations = OperationDetailData::getAllProductsByOperationId($_GET["id"]);
+$sell = SellData::getById($_GET["id"]);
+$operations = OperationData::getAllProductsBySellId($_GET["id"]);
 
 foreach ($operations as $op) {
 	$op->del();

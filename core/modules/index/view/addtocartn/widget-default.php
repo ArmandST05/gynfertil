@@ -16,7 +16,7 @@ if(!isset($_SESSION["cartn"])){
 		foreach($cart as $c){
 
 			///
-			$q = OperationDetailData::getQNoF($c["product_id"],$cut->id);
+			$q = OperationData::getQNoF($c["product_id"],$cut->id);
 			print_r($c);
 			echo ">>".$q;
 			if($c["q"]<=$q){
@@ -54,7 +54,7 @@ $found = false;
 $cart = $_SESSION["cartn"];
 $index=0;
 
-$q = OperationDetailData::getStockByProduct($_POST["product_id"],$cut->id);
+$q = OperationData::getStockByProduct($_POST["product_id"],$cut->id);
 
 
 

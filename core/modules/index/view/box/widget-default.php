@@ -9,7 +9,7 @@
 
 
 <?php
-$products = OperationData::getSellsUnBoxed();
+$products = SellData::getSellsUnBoxed();
 if(count($products)>0){
 $total_total = 0;
 ?>
@@ -29,7 +29,7 @@ $total_total = 0;
 		<td>
 
 <?php
-$operations = OperationDetailData::getAllProductsByOperationId($sell->id);
+$operations = OperationData::getAllProductsBySellId($sell->id);
 echo count($operations);
 ?>
 		<td>

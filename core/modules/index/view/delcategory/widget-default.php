@@ -1,7 +1,7 @@
 <?php
 
 $category = Categorydata::getById($_GET["id"]);
-$products = ProductData::getAllByTypeId($category->id);
+$products = ProductData::getAllByCategoryId($category->id);
 foreach ($products as $product) {
 	$product->del_category();
 }

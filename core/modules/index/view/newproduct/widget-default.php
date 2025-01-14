@@ -1,5 +1,5 @@
     <?php 
-$categories = ExpenseCategoryData::getAll();
+$categories = CategoryData::getAll();
     ?>
 <div class="row">
 	<div class="col-md-12">
@@ -67,9 +67,9 @@ $categories = ExpenseCategoryData::getAll();
     </div>
   </div>
   <div class="form-group">
-    <label for="inputEmail1" class="col-lg-2 control-label">Mínimo en inventario:</label>
+    <label for="inputEmail1" class="col-lg-2 control-label">Minima en inventario:</label>
     <div class="col-md-6">
-      <input type="text" name="minimum_inventory" class="form-control" id="inputEmail1" placeholder="Mínimo en Inventario (Default 10)">
+      <input type="text" name="inventary_min" class="form-control" id="inputEmail1" placeholder="Minima en Inventario (Default 10)">
     </div>
   </div>
 

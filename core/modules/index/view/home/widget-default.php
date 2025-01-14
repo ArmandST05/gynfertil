@@ -2,8 +2,8 @@
 	$found=false;
 $products = ProductData::getAll();
 foreach($products as $product){
-	$q=OperationDetailData::getStockByProduct($product->id);	
-	if($q<$product->minimum_inventory){
+	$q=OperationData::getStockByProduct($product->id);	
+	if($q<$product->inventary_min){
 		$found=true;
 		break;
 
@@ -18,7 +18,7 @@ foreach($products as $product){
     <i class="fa fa-download"></i> Descargar <span class="caret"></span>
   </button>
   <ul class="dropdown-menu" role="menu">
-    <li><a href="reports/alerts-word.php">Word 2007 (.docx)</a></li>
+    <li><a href="index.php?view=reports/alerts-word">Word 2007 (.docx)</a></li>
   </ul>
 </div>
 <?php endif;?>
@@ -75,15 +75,15 @@ if($px<=$npaginas):
 	</thead>
 	<?php
 foreach($curr_products as $product):
-	$q=OperationDetailData::getStockByProduct($product->id);
+	$q=OperationData::getStockByProduct($product->id);
 	?>
-	<?php if($q<$product->minimum_inventory):?>
-	<tr class="<?php if($q==0){ echo "danger"; }else if($q<=$product->minimum_inventory/2){ echo "danger"; } else if($q<=$product->minimum_inventory){ echo "warning"; } ?>">
+	<?php if($q<$product->inventary_min):?>
+	<tr class="<?php if($q==0){ echo "danger"; }else if($q<=$product->inventary_min/2){ echo "danger"; } else if($q<=$product->inventary_min){ echo "warning"; } ?>">
 		<td><?php echo $product->id; ?></td>
 		<td><?php echo $product->name; ?></td>
 		<td><?php echo $q; ?></td>
 		<td>
-		<?php if($q==0){ echo "<span class='label label-danger'>No hay existencias.</span>";}else if($q<=$product->minimum_inventory/2){ echo "<span class='label label-danger'>Quedan muy pocas existencias.</span>";} else if($q<=$product->minimum_inventory){ echo "<span class='label label-warning'>Quedan pocas existencias.</span>";} ?>
+		<?php if($q==0){ echo "<span class='label label-danger'>No hay existencias.</span>";}else if($q<=$product->inventary_min/2){ echo "<span class='label label-danger'>Quedan muy pocas existencias.</span>";} else if($q<=$product->inventary_min){ echo "<span class='label label-warning'>Quedan pocas existencias.</span>";} ?>
 		</td>
 	</tr>
 <?php endif;?>

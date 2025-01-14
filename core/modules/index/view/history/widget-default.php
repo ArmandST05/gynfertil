@@ -1,7 +1,7 @@
 <?php
 if(isset($_GET["product_id"])):
 $product = ProductData::getById($_GET["product_id"]);
-$operations = OperationDetailData::getAllByProductId($product->id);
+$operations = OperationData::getAllByProductId($product->id);
 ?>
 <div class="row">
 	<div class="col-md-12">
@@ -10,7 +10,7 @@ $operations = OperationDetailData::getAllByProductId($product->id);
     <i class="fa fa-download"></i> Descargar <span class="caret"></span>
   </button>
   <ul class="dropdown-menu" role="menu">
-    <li><a href="reports/history-word.php?id=<?php echo $product->id;?>">Word 2007 (.docx)</a></li>
+    <li><a href="rindex.php?view=reports/history-word&id=<?php echo $product->id;?>">Word 2007 (.docx)</a></li>
   </ul>
 </div>
 <h1><?php echo $product->name;; ?> <small>Historial</small></h1>
@@ -24,7 +24,7 @@ $operations = OperationDetailData::getAllByProductId($product->id);
 
 
 	<?php
-$itotal = OperationDetailData::GetInputQYesF($product->id);
+$itotal = OperationData::GetInputQYesF($product->id);
 
 	?>
 <div class="jumbotron">
@@ -42,7 +42,7 @@ $itotal = OperationDetailData::GetInputQYesF($product->id);
 
 	<div class="col-md-4">
 	<?php
-$total = OperationDetailData::GetQYesF($product->id);
+$total = OperationData::getStockByProduct($product->id);
 
 
 	?>
@@ -63,7 +63,7 @@ $total = OperationDetailData::GetQYesF($product->id);
 
 
 	<?php
-$ototal = -1*OperationDetailData::GetOutputQYesF($product->id);
+$ototal = -1*OperationData::GetOutputQYesF($product->id);
 
 	?>
 <div class="jumbotron">

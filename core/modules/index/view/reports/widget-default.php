@@ -69,10 +69,10 @@ $products = ProductData::getAll();
 			$operations = array();
 
 			if($_GET["product_id"]==""){
-			$operations = OperationDetailData::getAllByDateOfficial($_GET["sd"],$_GET["ed"]);
+			$operations = OperationData::getAllByDateOfficial($_GET["sd"],$_GET["ed"]);
 			}
 			else{
-			$operations = OperationDetailData::getAllByDateOfficialBP($_GET["product_id"],$_GET["sd"],$_GET["ed"]);
+			$operations = OperationData::getAllByDateOfficialBP($_GET["product_id"],$_GET["sd"],$_GET["ed"]);
 			} 
 
 

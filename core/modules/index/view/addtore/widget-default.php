@@ -21,7 +21,7 @@ $found = false;
 $cart = $_SESSION["reabastecer"];
 $index=0;
 
-$q = OperationDetailData::getStockByProduct($_POST["product_id"]);
+$q = OperationData::getStockByProduct($_POST["product_id"]);
 
 
 

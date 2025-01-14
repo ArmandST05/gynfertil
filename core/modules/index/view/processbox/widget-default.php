@@ -1,5 +1,5 @@
 <?php
-$sells = OperationData::getSellsUnBoxed();
+$sells = SellData::getSellsUnBoxed();
 
 if(count($sells)){
 	$box = new BoxData();

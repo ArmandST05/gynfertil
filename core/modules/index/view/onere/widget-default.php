@@ -4,28 +4,28 @@
     <i class="fa fa-download"></i> Descargar <span class="caret"></span>
   </button>
   <ul class="dropdown-menu" role="menu">
-    <li><a href="reports/onere-word.php?id=<?php echo $_GET["id"];?>">Word 2007 (.docx)</a></li>
+    <li><a href="index.php?view=reports/onere-word&id=<?php echo $_GET["id"];?>">Word 2007 (.docx)</a></li>
   </ul>
 </div>
 <h1>Resumen de Reabastecimiento</h1>
 <?php if(isset($_GET["id"]) && $_GET["id"]!=""):?>
 <?php
-$sell = OperationData::getById($_GET["id"]);
-$operations = OperationDetailData::getAllProductsByOperationId($_GET["id"]);
+$sell = SellData::getById($_GET["id"]);
+$operations = OperationData::getAllProductsBySellId($_GET["id"]);
 $total = 0;
 ?>
 <?php
 if(isset($_COOKIE["selled"])){
 	foreach ($operations as $operation) {
 //		print_r($operation);
-		$qx = OperationDetailData::getStockByProduct($operation->product_id);
+		$qx = OperationData::getStockByProduct($operation->product_id);
 		// print "qx=$qx";
 			$p = $operation->getProduct();
 		if($qx==0){
 			echo "<p class='alert alert-danger'>El producto <b style='text-transform:uppercase;'> $p->name</b> no tiene existencias en inventario.</p>";			
-		}else if($qx<=$p->minimum_inventory/2){
+		}else if($qx<=$p->inventary_min/2){
 			echo "<p class='alert alert-danger'>El producto <b style='text-transform:uppercase;'> $p->name</b> tiene muy pocas existencias en inventario.</p>";
-		}else if($qx<=$p->minimum_inventory){
+		}else if($qx<=$p->inventary_min){
 			echo "<p class='alert alert-warning'>El producto <b style='text-transform:uppercase;'> $p->name</b> tiene pocas existencias en inventario.</p>";
 		}
 	}

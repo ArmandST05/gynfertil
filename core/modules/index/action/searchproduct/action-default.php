@@ -17,12 +17,12 @@ if(count($products)>0){
 	<?php
 $products_in_cero=0;
 	 foreach($products as $product):
-$q= OperationDetailData::getStockByProduct($product->id);
+$q= OperationData::getStockByProduct($product->id);
 	?>
 	<?php 
 	if($q>0):?>
 		
-	<tr class="<?php if($q<=$product->minimum_inventory){ echo "danger"; }?>">
+	<tr class="<?php if($q<=$product->inventary_min){ echo "danger"; }?>">
 		<td style="width:80px;"><?php echo $product->id; ?></td>
 		<td><?php echo $product->name; ?></td>
 		<td><?php echo $product->unit; ?></td>

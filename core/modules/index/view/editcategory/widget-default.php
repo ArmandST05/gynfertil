@@ -1,7 +1,7 @@
-<?php $user = ExpenseCategoryData::getById($_GET["id"]);?>
+<?php $user = CategoryData::getById($_GET["id"]);?>
 <div class="row">
 	<div class="col-md-12">
-	<h1>Editar Categoría</h1>
+	<h1>Editar Categoria</h1>
 	<br>
 		<form class="form-horizontal" method="post" id="addproduct" action="index.php?view=updatecategory" role="form">
 

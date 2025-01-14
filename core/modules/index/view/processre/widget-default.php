@@ -15,7 +15,7 @@ $process = true;
 
 //////////////////////////////////
 		if($process==true){
-			$sell = new OperationData();
+			$sell = new SellData();
 			$sell->user_id = $_SESSION["user_id"];
 			 if(isset($_POST["client_id"]) && $_POST["client_id"]!=""){
 			 	$sell->person_id=$_POST["client_id"];
@@ -28,7 +28,7 @@ $process = true;
 		foreach($cart as  $c){
 
 
-			$op = new OperationDetailData();
+			$op = new OperationData();
 			 $op->product_id = $c["product_id"] ;
 			 $op->operation_type_id=1; // 1 - entrada
 			 $op->sell_id=$s[1];
