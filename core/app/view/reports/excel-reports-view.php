@@ -20,16 +20,16 @@
     </form>
 
     <h2>Datos filtrados:</h2>
-    <table border="1" id="dataTable">
+    <table id="dataTable">
         <thead>
             <tr>
                 <th>Nombre</th>
-                <th>fecha_na</th>
-                <th>Fecha de Ingreso</th>
+                <th>Teléfono</th>
+                <th>Categoría</th>
             </tr>
         </thead>
         <tbody>
-            <!-- Los datos se cargarán aquí dinámicamente -->
+            <!-- Las filas se llenarán con los datos obtenidos -->
         </tbody>
     </table>
 
@@ -38,16 +38,13 @@
         <input type="hidden" name="end_date" id="export_end_date">
         <button type="submit">Exportar a Excel</button>
     </form>
-
     <script>
-      $(document).ready(function() {
+$(document).ready(function() {
     $('#filterButton').on('click', function() {
         const startDate = $('#start_date').val();
         const endDate = $('#end_date').val();
 
-        // Depuración: Verificar si las fechas son correctas
-        console.log('Fecha de inicio: ', startDate);
-        console.log('Fecha de fin: ', endDate);
+        console.log('Fechas enviadas - Inicio:', startDate, 'Fin:', endDate);  // Depuración de las fechas
 
         if (!startDate || !endDate) {
             alert('Por favor selecciona ambas fechas.');
@@ -55,59 +52,50 @@
         }
 
         $.ajax({
-            url: './?action=reports/reports-excel', // Asegúrate de que esta acción devuelva JSON
+            url: './?action=reports/reports-excel', // Ruta correcta
             method: 'POST',
             data: { start_date: startDate, end_date: endDate },
-
-            // Depuración: Ver qué datos se están enviando en la solicitud
-            beforeSend: function() {
-                console.log('Enviando datos al servidor...');
-                console.log('Datos enviados:', { start_date: startDate, end_date: endDate });
-            },
+            dataType: 'json', // Asegura que la respuesta se trate como JSON
 
             success: function(response) {
-                try {
-                    // Depuración: Ver la respuesta cruda del servidor
-                    console.log('Respuesta del servidor:', response);
+                console.log('Respuesta del servidor:', response);  // Depuración de la respuesta del servidor
 
-                    // Intentar parsear la respuesta
-                    const data = JSON.parse(response);
-                    const tbody = $('#dataTable tbody');
-                    tbody.empty();
+                // Comprobamos si hay algún error en la respuesta
+                if (response.error) {
+                    console.error('Error desde el servidor:', response.error);  // Ver error específico
+                    alert('Error: ' + response.error);
+                    return;
+                }
 
-                    if (data.length > 0) {
-                        data.forEach(row => {
-                            tbody.append(`
-                                <tr>
-                                    <td>${row.name}</td>
-                                    <td>${row.fecha_na}</td>
-                                    <td>${row.created_at}</td>
-                                </tr>
-                            `);
-                        });
-
-                        $('#export_start_date').val(startDate);
-                        $('#export_end_date').val(endDate);
-                    } else {
-                        tbody.append('<tr><td colspan="3">No se encontraron datos</td></tr>');
-                    }
-                } catch (error) {
-                    // Depuración: Si ocurre un error al parsear la respuesta
-                    console.error('Error al procesar la respuesta JSON:', error);
-                    alert('Error al procesar los datos. Asegúrate de que el servidor esté enviando datos en formato JSON.');
-                    console.log('Respuesta cruda:', response);
+                // Procesamos los datos
+                const tbody = $('#dataTable tbody');
+                tbody.empty();
+                if (response.length > 0) {
+                    response.forEach(row => {
+                        tbody.append(`
+                            <tr>
+                                <td>${row.name || 'Sin nombre'}</td>
+                                <td>${row.tel || 'Sin teléfono'}</td>
+                                <td>${row.category_name || 'Sin categoría'}</td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    tbody.append('<tr><td colspan="3">No se encontraron datos</td></tr>');
                 }
             },
 
             error: function(xhr, status, error) {
-                // Depuración: Mostrar detalles de cualquier error en la solicitud AJAX
                 console.error('Error en la solicitud AJAX:', status, error);
+                console.error('Respuesta completa del servidor:', xhr.responseText);  // Depuración de la respuesta
                 alert('Ocurrió un error al obtener los datos.');
             }
         });
     });
 });
 
-    </script>
+
+</script>
+
 </body>
 </html>
