@@ -7,94 +7,146 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>Visualizar y Exportar Datos</h1>
+<div class="container mt-5">
+        <h1 class="text-center mb-4">Visualizar y Exportar Datos</h1>
 
-    <form id="filterForm">
-        <label for="start_date">Fecha de inicio:</label>
-        <input type="date" name="start_date" id="start_date" required>
+          <!-- Formulario para filtrar datos -->
+          <form id="filterForm" class="mb-4">
+    <div class="row mb-3 d-flex align-items-center">
+        <div class="col-md-3">
+            <label for="start_date" class="form-label">Fecha de inicio:</label>
+            <input type="date" name="start_date" id="start_date" class="form-control" required>
+        </div>
+        
+        <div class="col-md-3">
+            <label for="end_date" class="form-label">Fecha de fin:</label>
+            <input type="date" name="end_date" id="end_date" class="form-control" required>
+        </div>
+        
+        <div class="col-md-3 justify-content-between">
+            <!-- Botón Filtrar -->
+            <button type="button" id="filterButton" class="btn btn-primary" style="margin-top: 23px;">Filtrar</button>
+        </div>
+        
+        <div class="col-md-3 justify-content-between">
 
-        <label for="end_date">Fecha de fin:</label>
-        <input type="date" name="end_date" id="end_date" required>
+            <div class="col-md-3 justify-content-between">
 
-        <button type="button" id="filterButton">Filtrar</button>
-    </form>
+            <button type="button" id="exportButton" class="btn btn-success" style="margin-top: 23px;">Exportar a Excel</button>
+        </div>
+        </div>
+    </div>
+</form>
 
-    <h2>Datos filtrados:</h2>
-    <table id="dataTable">
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Teléfono</th>
-                <th>Categoría</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Las filas se llenarán con los datos obtenidos -->
-        </tbody>
-    </table>
 
-    <form action="index.php?action=reports/reports-excel" method="GET" id="exportForm">
-        <input type="hidden" name="start_date" id="export_start_date">
-        <input type="hidden" name="end_date" id="export_end_date">
-        <button type="submit">Exportar a Excel</button>
-    </form>
+
+        <!-- Tabla para mostrar datos -->
+        <h2>Datos filtrados:</h2>
+        <table id="dataTable" class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Categoría</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Las filas se llenarán con los datos obtenidos -->
+            </tbody>
+        </table>
+    </div>
+
+
     <script>
 $(document).ready(function() {
-    $('#filterButton').on('click', function() {
+    $('#exportButton').on('click', function() {
         const startDate = $('#start_date').val();
         const endDate = $('#end_date').val();
 
-        console.log('Fechas enviadas - Inicio:', startDate, 'Fin:', endDate);  // Depuración de las fechas
-
+        // Validar que las fechas sean proporcionadas
         if (!startDate || !endDate) {
             alert('Por favor selecciona ambas fechas.');
             return;
         }
 
+        // Realizar la solicitud AJAX para exportar a Excel
         $.ajax({
-            url: './?action=reports/reports-excel', // Ruta correcta
-            method: 'POST',
+            url: './?action=reports/export-excel', // Ruta que manejará la exportación
+            method: 'GET',
             data: { start_date: startDate, end_date: endDate },
-            dataType: 'json', // Asegura que la respuesta se trate como JSON
-
             success: function(response) {
-                console.log('Respuesta del servidor:', response);  // Depuración de la respuesta del servidor
-
-                // Comprobamos si hay algún error en la respuesta
-                if (response.error) {
-                    console.error('Error desde el servidor:', response.error);  // Ver error específico
-                    alert('Error: ' + response.error);
-                    return;
-                }
-
-                // Procesamos los datos
-                const tbody = $('#dataTable tbody');
-                tbody.empty();
-                if (response.length > 0) {
-                    response.forEach(row => {
-                        tbody.append(`
-                            <tr>
-                                <td>${row.name || 'Sin nombre'}</td>
-                                <td>${row.tel || 'Sin teléfono'}</td>
-                                <td>${row.category_name || 'Sin categoría'}</td>
-                            </tr>
-                        `);
-                    });
-                } else {
-                    tbody.append('<tr><td colspan="3">No se encontraron datos</td></tr>');
-                }
+                // Crear un enlace temporal para descargar el archivo Excel
+                const blob = new Blob([response], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `datos_filtrados_${startDate}_a_${endDate}.xlsx`;  // Nombre del archivo
+                link.click();
             },
-
             error: function(xhr, status, error) {
-                console.error('Error en la solicitud AJAX:', status, error);
-                console.error('Respuesta completa del servidor:', xhr.responseText);  // Depuración de la respuesta
-                alert('Ocurrió un error al obtener los datos.');
+                console.error('Error al exportar los datos:', status, error);
+                alert('Ocurrió un error al intentar exportar los datos.');
             }
         });
     });
 });
 
 
+    $(document).ready(function() {
+        $('#filterButton').on('click', function() {
+            const startDate = $('#start_date').val();
+            const endDate = $('#end_date').val();
+
+            // Validar que las fechas sean proporcionadas
+            if (!startDate || !endDate) {
+                alert('Por favor selecciona ambas fechas.');
+                return;
+            }
+
+            // Realizar la solicitud AJAX para obtener datos
+            $.ajax({
+                url: './?action=reports/reports-excel', // Asegúrate de que esta sea la ruta correcta
+                method: 'POST',
+                data: { start_date: startDate, end_date: endDate },
+                dataType: 'json', // Asegura que la respuesta se trate como JSON
+
+                success: function(response) {
+                    const tbody = $('#dataTable tbody');
+                    tbody.empty(); // Limpiar la tabla antes de llenarla
+
+                    // Validar si hubo algún error en la respuesta
+                    if (response.error) {
+                        alert('Error: ' + response.error);
+                        return;
+                    }
+
+                    // Llenar la tabla con los datos obtenidos
+                    if (response && response.length > 0) {  // Cambié 'response.data' por 'response'
+                        response.forEach(row => {
+                            tbody.append(`
+                                <tr>
+                                    <td>${row.name || 'Sin nombre'}</td>
+                                    <td>${row.tel || 'Sin teléfono'}</td>
+                                    <td>${row.category_name || 'Sin categoría'}</td>
+                                </tr>
+                            `);
+                        });
+                    } else {
+                        tbody.append('<tr><td colspan="3">No se encontraron datos</td></tr>');
+                    }
+
+                    // Actualizar los campos ocultos del formulario de exportación
+                    $('#export_start_date').val(startDate);
+                    $('#export_end_date').val(endDate);
+                },
+
+                error: function(xhr, status, error) {
+                    console.error('Error en la solicitud AJAX:', status, error);
+                    console.error('Respuesta completa del servidor:', xhr.responseText); // Esto mostrará lo que devuelve el servidor
+                    alert('Ocurrió un error al obtener los datos. Revisa la consola para más detalles.');
+                }
+            });
+        });
+    });
 </script>
 
 </body>
