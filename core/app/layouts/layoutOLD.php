@@ -283,7 +283,6 @@ if (!isset($_SESSION["alert_payment"])) {
                   <li><a href="./?view=reports/treatments">Reporte Tratamientos</a></li>
                   <li><a href="./?view=reportsPregnancies">Reporte Embarazos</a></li>
                   <li><a href="./?view=reports/transactions">Reporte Transacciones</a></li>
-                  <li><a href="./?view=reports/excel-reports">Reportes Excel</a></li>
                 </ul>
               </li>
 

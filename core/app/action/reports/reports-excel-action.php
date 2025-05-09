@@ -26,6 +26,10 @@ if (isset($_POST['start_date']) && isset($_POST['end_date'])) {
                 'name' => $row->name,
                 'tel' => $row->tel,
                 'category_name' => $row->category_name,
+                'date_at' => $row->date_at,
+                'note' => $row->note
+                
+                
             ];
         }
 
