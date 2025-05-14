@@ -1,203 +1,104 @@
 <?php
 class ProductData {
-	public static $tablename = "product";
-
-	public $name;
-	public $price_in;
-	public $price_out;
-	public $category_id;
-	public $user_id;
-	public $inventary_min;
-	public $created_at;
-	public $barcode;
-	public $id;
-	public $image;
-	public $is_image;
-	public $brand;
-	public $presentation;
-	public $is_active;
+	public static $tablename = "products";
 
 	public function __construct(){
 		$this->name = "";
 		$this->price_in = "";
 		$this->price_out = "";
+		$this->unit = "";
+		$this->user_id = "";
+		$this->presentation = "0";
 		$this->created_at = "NOW()";
 	}
 
-	public function getCategory(){ return CategoryData::getById($this->category_id);}
+	public function getExpenseCategory(){ return ExpenseCategoryData::getById($this->expense_category_id);}
+	public function getType(){ return ProductTypeData::getById($this->type_id);}
+
+	//PRODUCT TYPES
+	//CONCEPTOS INGRESOS(1)
+	//CONCEPTOS EGRESOS (2)
+	//INSUMOS (3)
+	//MEDICAMENTO (4)
 
 	public function add(){
-		$sql = "INSERT INTO product (barcode,name,brand,presentation,price_in,price_out,user_id,inventary_min,type,idCat) 
-        VALUES ('$this->barcode','$this->name','$this->brand','$this->presentation','$this->price_in','$this->price_out','$this->user_id','$this->inventary_min','MEDICAMENTO',8)";
+		$sql = "INSERT INTO ".self::$tablename." (barcode,name,price_in,price_out,user_id,minimum_inventory,type_id,expense_category_id) 
+        VALUES (\"$this->barcode\",\"$this->name\",\"$this->price_in\",\"$this->price_out\",\"$this->user_id\",\"$this->minimum_inventory\",4,8)";
 		return Executor::doit($sql);
-	}
-
-	public function addS(){
-		$sql = "INSERT INTO product (name,inventary_min,user_id,type,idCat) 
-        VALUES ('$this->name','$this->inventary_min','$this->user_id','INSUMOS',9)";
-		return Executor::doit($sql);
-	}
-
-	public static function delById($id){
-		$sql = "delete from ".self::$tablename." where id=$id";
-		Executor::doit($sql);
-	}
-
-	public function del(){
-		$sql = "delete from ".self::$tablename." where id=$this->id";
-		Executor::doit($sql);
 	}
 
 	public function update(){
-		$sql = "update ".self::$tablename." set barcode=\"$this->barcode\",name=\"$this->name\",brand=\"$this->brand\",presentation=\"$this->presentation\",price_in=\"$this->price_in\",price_out=\"$this->price_out\",inventary_min=\"$this->inventary_min\",is_active=\"$this->is_active\" where id=$this->id";
+		$sql = "UPDATE ".self::$tablename." SET barcode=\"$this->barcode\",name=\"$this->name\",price_in=\"$this->price_in\",price_out=\"$this->price_out\",minimum_inventory=\"$this->minimum_inventory\",is_active_user=\"$this->is_active_user\" WHERE id=$this->id";
 		Executor::doit($sql);
 	}
 
-	public function updateS(){
-		$sql = "update ".self::$tablename." set name=\"$this->name\",inventary_min=\"$this->inventary_min\" where id=$this->id";
+	public function delete(){
+		$sql = "DELETE FROM ".self::$tablename." WHERE id = $this->id";
 		Executor::doit($sql);
 	}
 
-	public function del_category(){
-		$sql = "update ".self::$tablename." set category_id=NULL where id=$this->id";
+	public function deactivate(){
+		$sql = "UPDATE ".self::$tablename." SET is_active = 0 WHERE id=$this->id";
+		Executor::doit($sql);
+	}
+
+	public function updateCategory(){
+		//Actualiza la categoría de un producto.
+		$sql = "UPDATE ".self::$tablename." SET expense_category_id = $this->expense_category_id WHERE id=$this->id";
 		Executor::doit($sql);
 	}
 
 	public function update_image(){
-		$sql = "update ".self::$tablename." set image=\"$this->image\" where id=$this->id";
+		$sql = "UPDATE ".self::$tablename." SET image=\"$this->image\" WHERE id=$this->id";
 		Executor::doit($sql);
 	}
 
 	public static function getById($id){
-		$sql = "select * from ".self::$tablename." where id=$id";
+		$sql = "SELECT * FROM ".self::$tablename." WHERE id = '$id'";
 		$query = Executor::doit($sql);
 		return Model::one($query[0],new ProductData());
 	}
 
-	public static function getByIdTypePay($id){
-	    $sql = "select * from typepayment where id=$id";
-	    $query = Executor::doit($sql);
-	    return Model::one($query[0],new ProductData());
-	}
-
 	public static function getAll($name){
-		$sql = "select * from ".self::$tablename." WHERE name like '%$name%'  AND (type='MEDICAMENTO' OR type='INSUMOS') ";
+		$sql = "SELECT * FROM ".self::$tablename." WHERE name like '%$name%'  AND (type_id='4' OR type_id='3') AND is_active = 1 
+		ORDER BY name DESC";
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
 
-	public static function getAllRe($cod){
-		$sql = "select * from ".self::$tablename." WHERE barcode='$cod'";
+	public static function getByBarcode($barcode){
+		$sql = "SELECT * FROM ".self::$tablename." WHERE barcode = '$barcode' AND is_active = 1 ";
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
 
-	public static function getAllReN($name){
-		$sql = "select * from ".self::$tablename." WHERE name='$name'";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getPendiente($idPac){
-		$sql = "SELECT * FROM sell WHERE `status`='0' AND idPac='$idPac'";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getInventoryProducts(){
-		$sql = "SELECT * FROM ".self::$tablename." WHERE type='MEDICAMENTO'
-		ORDER BY name ASC";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getAllI(){
-		$sql = "select * from ".self::$tablename." WHERE (type='MEDICAMENTO')";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getAllS($name){
-		$sql = "select * from ".self::$tablename." WHERE type='INSUMOS' AND name like '%$name%'";
+	public static function getByName($name){
+		$sql = "SELECT * FROM ".self::$tablename." WHERE name='$name' AND is_active = 1 ";
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
 
 	public static function getAllByPage($start_from,$limit){
-		$sql = "select * from ".self::$tablename." where id>=$start_from AND type='MEDICAMENTO' limit $limit";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getAllByPageI($start_from,$limit){
-		$sql = "select * from ".self::$tablename." where id>=$start_from AND (type='MEDICAMENTO' OR type='INSUMOS') limit $limit";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getAllByPageS($start_from,$limit){
-		$sql = "select * from ".self::$tablename." where id>=$start_from AND type='INSUMOS' limit $limit";
+		$sql = "SELECT * FROM ".self::$tablename." WHERE id>=$start_from AND type_id='4' AND is_active = 1 limit $limit";
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
 
 	public static function getLike($p){
-		$sql = "select * from ".self::$tablename." where  (type='MEDICAMENTO' OR type='CONCEPTO')  OR (name like '%$p%')";
+		$sql = "SELECT * FROM ".self::$tablename." WHERE (type_id='4' OR type_id='1')  OR (name like '%$p%')";
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
 
-	public static function getLikeSell(){
-		$sql = "select * from ".self::$tablename." where  (type='MEDICAMENTO' OR type='CONCEPTO')";
+	public static function getAllByTypeId($typeId){
+		//Obtiene los productos de cierto tipo
+		$sql = "SELECT * FROM ".self::$tablename." WHERE type_id='$typeId' AND is_active = 1 ORDER BY name";
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
-
-	public static function getLikeSalidas(){
-		$sql = "select * from ".self::$tablename." where  (type='INSUMOS' OR type='MEDICAMENTO')";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getLikeEnt($p){
-		$sql = "select * from ".self::$tablename." where  (type='MEDICAMENTO' OR type='INSUMOS')  OR (name like '%$p%')";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getLikeSal($p){
-		$sql = "select * from ".self::$tablename." where (barcode like '%$p%' or name like '%$p%' or id like '%$p%') AND (type='INSUMOS')";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getLikeConcepts($p){
-		$sql = "SELECT id,name,'500' price_out FROM conceptsincome WHERE name like '%$p%'";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
 
 	public static function getAllByUserId($user_id){
-		$sql = "select * from ".self::$tablename." where user_id=$user_id order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getAllByCategoryId($category_id){
-		$sql = "select * from ".self::$tablename." where category_id=$category_id order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-    public static function getTypePay(){
-		$sql = "select * from typepayment";
-		$query = Executor::doit($sql);
-		return Model::many($query[0],new ProductData());
-	}
-
-	public static function getTypePayeX(){
-		$sql = "select * from typepayment WHERE type='1'";
+		$sql = "SELECT * FROM ".self::$tablename." WHERE user_id=$user_id order by created_at desc";
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
@@ -207,12 +108,54 @@ class ProductData {
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
-    
-    public static function getTypeSellId($id){
-		$sql = "SELECT * FROM pay  WHERE typePay='INGRESOS' AND idSell='$id'";
+	
+	/*-----------CONCEPTOS INGRESOS---------- */
+	public function addIncomeConcept(){
+		$sql = "INSERT INTO ".self::$tablename." (name,type_id,description,price_in,price_out) value (\"$this->name\",'1',\"$this->description\",\"$this->price_in\",\"$this->price_out\")";
+		return Executor::doit($sql);
+	}
+
+	public function updateIncomeConcept(){
+		$sql = "UPDATE ".self::$tablename." set name=\"$this->name\",description=\"$this->description\",price_in=\"$this->price_in\",price_out=\"$this->price_out\" WHERE id = $this->id";
+		return Executor::doit($sql);
+	}
+
+	/*----------SUPPLIES------------ */
+	public function addSupply(){
+		$sql = "INSERT INTO ".self::$tablename." (name,minimum_inventory,user_id,type_id,expense_category_id) 
+		VALUES ('$this->name','$this->minimum_inventory','$this->user_id','3',9)";
+		return Executor::doit($sql);
+	}
+
+	public function updateSupply(){
+		//Actualiza un producto de tipo supplies
+		$sql = "UPDATE ".self::$tablename." SET name=\"$this->name\",minimum_inventory=\"$this->minimum_inventory\" WHERE id = $this->id";
+		Executor::doit($sql);
+	}
+	
+	/*----------EXPENSE CONCEPTS------------ */
+	public function addExpenseConcept(){
+		$sql = "INSERT INTO ".self::$tablename." (name,expense_category_id,type_id) 
+		VALUES ('$this->name','$this->expense_category_id','$this->type_id')";
+		return Executor::doit($sql);
+	}
+
+	public function updateExpenseConcept(){
+		$sql = "UPDATE ".self::$tablename." SET name=\"$this->name\",expense_category_id=\"$this->expense_category_id\" WHERE id = $this->id";
+		Executor::doit($sql);
+	}
+
+	/*
+	//MÉTODOS DE VISTA resupply-view
+	public static function getLikeEnt($p){
+		$sql = "SELECT * FROM ".self::$tablename." WHERE (type_id='4' OR type_id='3')  OR (name like '%$p%')";
 		$query = Executor::doit($sql);
 		return Model::many($query[0],new ProductData());
 	}
 
+	public static function getLikeSal($p){
+		$sql = "SELECT * FROM ".self::$tablename." WHERE (barcode like '%$p%' or name like '%$p%' or id like '%$p%') AND (type_id='3')";
+		$query = Executor::doit($sql);
+		return Model::many($query[0],new ProductData());
+	}*/
 }
-?>

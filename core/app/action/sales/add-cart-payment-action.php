@@ -1,67 +1,86 @@
 <?php
-if(!isset($_SESSION["payments"])){
+//Obtener configuración para validar si se agregará una comisión automática cada vez que se registre un pago de tarjeta
+$configuration = ConfigurationData::getAll();
+$isCardCommission = $configuration["active_card_commission"]->value;
+$totalCardCommission = (isset($configuration["card_commission_value"]) ? $configuration["card_commission_value"]->value : 0);
+$totalSale = floatval($_POST["totalSale"]);
 
-    /*if($_POST["paymentTypeId"] == 2 || $_POST["paymentTypeId"] == 3){
-		//Forma de pago en tarjeta se agrega la comisión
-       $money = $_POST["money"]*1.015;
-	}else{
-	   $money = $_POST["money"];
-	}*/
-	$money = $_POST["money"];
+if (!isset($_SESSION["payments"]) || (isset($_SESSION["payments"]) && count($_SESSION["payments"]) == 0)) {
+	//Validar si la cantidad del pago no supera el total de la venta en pagos que no sean en efectivo
+	//En el pago de efectivo se permite superar el total para mostrar el cambio
+	if ($_POST["paymentType"] == 1 || ($_POST["quantity"] <= $totalSale)) {
+		if ($isCardCommission && ($_POST["paymentType"] == 2 || $_POST["paymentType"] == 3)) {
 
-	$newPayment = array("idType"=>$_POST["paymentTypeId"],"money"=>$money,"bankAccountId"=>$_POST["bankAccountId"],"isInvoice"=>$_POST["isInvoice"]);
-	$_SESSION["payments"] = array($newPayment);
+			//Forma de pago en tarjeta se calcula el total a pagar + la comisión
+			$commissionPrice = $_POST["quantity"] * $totalCardCommission; //Se calcula el precio de la comisión.
+			$quantity = $_POST["quantity"] + $commissionPrice; //Se calcula la cantidad del pago.
 
-    //Forma de pago en tarjeta se agrega la comisión como un nuevo artículo en el detalle de venta.
-    /*if($_POST["paymentTypeId"] == 2 || $_POST["paymentTypeId"] == 3){
-		$cart = $_SESSION["cart"];//Se obtienen los datos del carrito
-		$cort = $_POST["money"] * 0.015;//Se calcula el precio de la comisión.
+			//Forma de pago en tarjeta se agrega la comisión como un nuevo artículo en el detalle de venta.
+			$cart = $_SESSION["cart"]; //Se obtienen los datos del carrito 
+			$newProduct = array("id" => "1", "quantity" => "1", "price" => $commissionPrice, "typeId" => "3", "typeName" => "CONCEPTOS");
+			$cart[] = $newProduct;
+			$_SESSION["cart"] = $cart; //Se actualiza el detalle de venta agregando la comisión
+		} else {
+			$quantity = $_POST["quantity"];
+		}
 
-		$newProduct = array("product_id"=>"13","q"=>"1","price"=>$cort,"type"=>"CONCEPTO");
-		$cart[] = $newProduct;
-		$_SESSION["cart"] = $cart;//Se actualiza el detalle de venta agregando la comisión
-    }	*/
-}
-else{
-	$payments = $_SESSION["payments"];//Pagos agregados
+		$newPayment = array("id" => $_POST["paymentType"], "quantity" => $quantity);
+		$_SESSION["payments"] = array($newPayment);
+	} else {
+		echo '<script> 
+				alert("La cantidad pagada no puede superar el total de la venta.");
+				window.location="index.php?view=sales/new-details&reservationId=' . $_POST["reservationId"] . '&patientId=' . $_POST["patientId"] . '&medicId=' . $_POST["medicId"] . '&date=' . $_POST["date"] . '";
+			</script>';
+	}
+} else {
+	$payments = $_SESSION["payments"]; //Pagos agregados
+	$totalPayment = 0;
 
 	//Se verifica que no exista el tipo de pago en la lista.
-	foreach($payments as $payment){
-		if($payment["idType"] == $_POST["paymentTypeId"]){
-			$existingPayment = true; 
+	foreach ($payments as $payment) {
+		$totalPayment += $payment["quantity"];
+		if ($payment["id"] == $_POST["paymentType"]) {
+			$existingPayment = true;
 			break;
 			//Si ya se agregó el método de pago redireccionamos y mostramos alerta
 			echo '<script> 
-					alert("El tipo de pago ya esta en la lista.");
-					window.location="index.php?view=sales/new-details&idRes='.$_POST["idRes"].'&id_paciente='.$_POST["id_paciente"].'&idMed='.$_POST["idMed"].'&fecha='.$_POST["fecha"].'";
-				</script>';	
+					alert("El tipo de pago ya está en la lista.");
+					window.location="index.php?view=sales/new-details&reservationId=' . $_POST["reservationId"] . '&patientId=' . $_POST["patientId"] . '&medicId=' . $_POST["medicId"] . '&date=' . $_POST["date"] . '";
+				</script>';
 		}
 	}
-	if(!isset($existingPayment) || $existingPayment == false){
-		//Agregamos el nuevo tipo de pago ya que no se ha agregado.
 
-		/*if($_POST["paymentTypeId"] == 2 || $_POST["paymentTypeId"] == 3){
-			//Forma de pago en tarjeta se establece el valor de la comisión
-			$money = $_POST["money"]*1.015;
-		}else{
-			$money = $_POST["money"];
-		}*/
-		$money = $_POST["money"];
+	//Agregamos el nuevo tipo de pago ya que no se ha agregado.
+	if (!isset($existingPayment) || $existingPayment == false) {
+		//Validar si la cantidad del pago no supera el total de la venta en pagos que no sean en efectivo
+		//En el pago de efectivo se permite superar el total para mostrar el cambio
+		$actualTotalPayment = $totalPayment + $_POST["quantity"];
+		if ($actualTotalPayment <= $totalSale) {
 
-		$newPayment = array("idType" => $_POST["paymentTypeId"],"money" => $money,"bankAccountId"=>$_POST["bankAccountId"],"isInvoice"=>$_POST["isInvoice"]);
-		$payments[] = $newPayment;//Añadir el nuevo pago 
-		$_SESSION["payments"] = $payments;
-		
-		//Forma de pago en tarjeta se agrega la comisión como un nuevo artículo en el detalle de venta.
-		/*if($_POST["paymentTypeId"] == 2 || $_POST["paymentTypeId"] == 3){
-			$cort = $_POST["money"] * 0.015;//Se calcula el precio de la comisión.
-			$cart = $_SESSION["cart"];//Se obtienen los datos del carrito.
+			if ($isCardCommission && ($_POST["paymentType"] == 2 || $_POST["paymentType"] == 3)) {
+				//Forma de pago en tarjeta se calcula el total a pagar + la comisión
+				$commissionPrice = $_POST["quantity"] * $totalCardCommission; //Se calcula el precio de la comisión.
+				$quantity = $_POST["quantity"] + $commissionPrice; //Se calcula la cantidad del pago.
 
-			$newProduct = array("product_id"=>"13","q"=>"1","price"=>$cort,"type"=>"CONCEPTO");
-			$cart[] = $newProduct;
-			$_SESSION["cart"] = $cart;//Se actualiza el detalle de venta agregando la comisión
-		}*/
+				//Forma de pago en tarjeta se agrega la comisión como un nuevo artículo en el detalle de venta.
+				$cart = $_SESSION["cart"]; //Se obtienen los datos del carrito.
+
+				$newProduct = array("id" => "1", "quantity" => "1", "price" => $commissionPrice, "typeId" => "3", "typeName" => "CONCEPTOS");
+				$cart[] = $newProduct;
+				$_SESSION["cart"] = $cart; //Se actualiza el detalle de venta agregando la comisión
+			} else {
+				$quantity = $_POST["quantity"];
+			}
+
+			$newPayment = array("id" => $_POST["paymentType"], "quantity" => $quantity);
+			$payments[] = $newPayment; //Añadir el nuevo pago 
+			$_SESSION["payments"] = $payments;
+		} else {
+			echo '<script> 
+				alert("La cantidad pagada no puede superar el total de la venta.");
+				window.location="index.php?view=sales/new-details&reservationId=' . $_POST["reservationId"] . '&patientId=' . $_POST["patientId"] . '&medicId=' . $_POST["medicId"] . '&date=' . $_POST["date"] . '";
+			</script>';
+		}
 	}
 }
-print "<script>window.location='index.php?view=sales/new-details&idRes=".$_POST["idRes"]."&id_paciente=".$_POST["id_paciente"]."&idMed=".$_POST["idMed"]."&fecha=".$_POST["fecha"]."';</script>";
-?>
+print "<script>window.location='index.php?view=sales/new-details&reservationId=" . $_POST["reservationId"] . "&patientId=" . $_POST["patientId"] . "&medicId=" . $_POST["medicId"] . "&date=" . $_POST["date"] . "';</script>";

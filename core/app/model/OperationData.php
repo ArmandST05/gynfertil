@@ -1,549 +1,336 @@
 <?php
 class OperationData
 {
-	public static $tablename = "operation";
-	public static $tablenamePayments = "pay";
-	public static $tablenamePaymentTypes = "typepayment";
-	
-	public $product_id;
-	public $q;
-	public $cut_id;
-	public $operation_type_id;
-	public $created_at;
-	public $sell_id;
-	public $date;
-	public $price;
-	public $name;
-	public $id;
-	public $idType;
-	public $money;
-	public $bank_account_id;
-	public $is_invoice;
-	public $expiration_date;
-	public $lot;
-	public $cad;
-	public $buyId;
+	public static $tablename = "operations";
 
 	public function __construct()
 	{
-		$this->name = "";
-		$this->product_id = "";
-		$this->q = "";
-		$this->cut_id = "";
-		$this->operation_type_id = "";
-		$this->created_at =  date("Y-m-d H:i:s");
-		$this->date = date("Y-m-d H:i:s");
+		$this->created_at = "NOW()";
+	}
+
+	public function getUser()
+	{
+		return UserData::getById($this->user_id);
+	}
+	public function getPatient()
+	{
+		return PatientData::getById($this->patient_id);
+	}
+
+	public function getMedic()
+	{
+		return MedicData::getById($this->medic_id);
 	}
 
 	public function add()
 	{
-		$sql = "INSERT INTO " . self::$tablename . " (product_id,q,operation_type_id,sell_id,created_at,price) ";
-		$sql .= "value (\"$this->product_id\",\"$this->q\",$this->operation_type_id,$this->sell_id,\"$this->date\",$this->price)";
+		$sql = "INSERT INTO " . self::$tablename . " (total,discount,user_id,created_at) ";
+		$sql .= "value ($this->total,$this->discount,$this->user_id,\"$this->created_at\")";
 		return Executor::doit($sql);
 	}
 
-	public function addInput()
+	public function addInputInventory()
 	{
-		$sql = "INSERT INTO " . self::$tablename . " (product_id,q,operation_type_id,dateExpiry,lot) ";
-		$sql .= "VALUE ($this->product_id,$this->q,1,\"$this->expiration_date\",\"$this->lot\")";
+		$sql = "INSERT INTO " . self::$tablename . " (user_id,branch_office_id,operation_type_id,total,operation_category_id,created_at) ";
+		$sql .= "value ($this->user_id,\"$this->branch_office_id\",1,$this->total,'4',\"$this->created_at\")";
 		return Executor::doit($sql);
 	}
 
-	public function addCompras()
+	public function addOutputInventory()
 	{
-		$sql = "insert into " . self::$tablename . " (product_id,q,operation_type_id,sell_id,created_at,price,dateExpiry) ";
-		$sql .= "value (\"$this->product_id\",\"$this->q\",$this->operation_type_id,$this->sell_id,\"$this->date\",$this->price,\"$this->cad\")";
+		$sql = "INSERT INTO " . self::$tablename . " (user_id,branch_office_id,operation_type_id,created_at,total,operation_category_id,description) ";
+		$sql .= "value ($this->user_id,\"$this->branch_office_id\",2,\"$this->created_at\",$this->total,'2',\"$this->description\")";
 		return Executor::doit($sql);
 	}
 
-	public function addU()
+	public static function getBySaleStatusPatient($statusId, $patientId)
 	{
-		$sql = "insert into " . self::$tablename . " (product_id,q,operation_type_id,sell_id,created_at,price) ";
-		$sql .= "value (\"$this->product_id\",\"$this->q\",$this->operation_type_id,$this->sell_id,$this->date,$this->price)";
+		$sql = "SELECT * FROM " . self::$tablename . " WHERE `status_id`='$statusId' AND patient_id='$patientId'";
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new OperationData());
+	}
+
+	public static function getDescription($id)
+	{
+		$sql = "SELECT description FROM " . self::$tablename . " WHERE id='$id'";
+		$query = Executor::doit($sql);
+		return Model::one($query[0], new OperationData());
+	}
+
+	public function updateDescription()
+	{
+		$sql = "UPDATE  " . self::$tablename . " SET description=\"$this->description\" WHERE id = $this->id";
 		return Executor::doit($sql);
 	}
 
-	public static function delById($id)
+	public static function updateExpenseDate($operationId, $date)
 	{
-		$sql = "delete from " . self::$tablename . " where id=$id";
-		Executor::doit($sql);
+		$sql = "UPDATE " . self::$tablename . " SET created_at = '$date' WHERE id='$operationId'";
+		return Executor::doit($sql);
 	}
-	public function del()
+	public function updateDate()
 	{
-		$sql = "delete from " . self::$tablename . " where id=$this->id";
-		Executor::doit($sql);
-	}
-
-	public function delConB($id)
-	{
-		$sql = "delete from " . self::$tablename . " where id=$id";
-		Executor::doit($sql);
+		$sql = "UPDATE " . self::$tablename . " SET created_at = '$this->created_at' WHERE id='$this->id'";
+		return Executor::doit($sql);
 	}
 
-	public function UpdateDateExp($idB, $fecha)
+	public function updateTotal()
 	{
-		$sql = "UPDATE sell SET created_at='$fecha' WHERE id='$idB'";
-		Executor::doit($sql);
+		$sql = "UPDATE " . self::$tablename . " SET total=$this->total WHERE id='$this->id'";
+		return Executor::doit($sql);
 	}
 
-	public function updatedateFacdetE($idB, $fecha)
+	public function updateStatus()
 	{
-		$sql = "UPDATE " . self::$tablename . " SET created_at='$fecha' WHERE sell_id='$idB'";
-		Executor::doit($sql);
+		$sql = "UPDATE " . self::$tablename . " SET status_id = '$this->status_id' WHERE id = '$this->id'";
+		return Executor::doit($sql);
 	}
 
-
-	public function updatedateFac($idSell, $date, $total, $status)
+	public function updateIsInvoice()
 	{
-		$sql = "UPDATE sell SET created_at='$date',total='$total',status='$status' WHERE id='$idSell'";
-		Executor::doit($sql);
+		$sql = "UPDATE " . self::$tablename . " SET is_invoice='$this->value' WHERE id='$this->id'";
+		return Executor::doit($sql);
 	}
 
-	public function updatedateFac1($idSell, $total, $status)
+	public function updateInvoiceNumber()
 	{
-		$sql = "UPDATE sell SET total='$total',status='$status' WHERE id='$idSell'";
-		Executor::doit($sql);
+		$sql = "UPDATE " . self::$tablename . " SET invoice_number='$this->invoice_number' WHERE id='$this->id'";
+		return Executor::doit($sql);
 	}
 
-	public function updatedateFacFin($idSell, $total, $status, $com)
+	public function updateExpense()
 	{
-		$sql = "UPDATE sell SET total='$total',status='$status',comentarios='$com' WHERE id='$idSell'";
+		$sql = "UPDATE  " . self::$tablename . " set status_id=$this->status_id,total=$this->total,description=\"$this->description\" WHERE id=$this->id";
 		Executor::doit($sql);
 	}
 
-	public function updatedateFacdet($idSell, $date)
+	public function addSale($patientId, $medicId)
 	{
-		$sql = "UPDATE " . self::$tablename . " SET created_at='$date' WHERE sell_id='$idSell'";
-		Executor::doit($sql);
+		$sql = "INSERT INTO " . self::$tablename . " (total,discount,user_id,created_at,patient_id,medic_id,status_id,description,reservation_id,operation_type_id,operation_category_id,branch_office_id)";
+		$sql .= "VALUE ($this->total,$this->discount,$this->user_id,\"$this->date\",'$patientId','$medicId',$this->status_id,\"$this->description\",$this->reservation_id,2,1,$this->branch_office_id)";
+		return Executor::doit($sql);
 	}
 
-	public function updateExpFac($idExp, $valor)
+	public function delete()
 	{
-		$sql = "UPDATE sell SET fac='$valor' WHERE id='$idExp'";
-		Executor::doit($sql);
-	}
-
-	public function updateBanFac($idSell, $ban)
-	{
-		$sql = "UPDATE sell SET banco='$ban' WHERE id='$idSell'";
-		Executor::doit($sql);
-	}
-
-	public function updateSellFacs($idSell, $noFac)
-	{
-		$sql = "UPDATE sell SET noFac='$noFac' WHERE id='$idSell'";
-		Executor::doit($sql);
-	}
-
-
-	public function UpdateComen($id, $nota)
-	{
-		$sql = "UPDATE sell SET comentarios='$nota' WHERE id='$id'";
-		Executor::doit($sql);
-	}
-
-	// partiendo de que ya tenemos creado un objecto OperationData previamente utilizamos el contexto
-	public function update()
-	{
-		$sql = "update " . self::$tablename . " set product_id=\"$this->product_id\",q=\"$this->q\" where id=$this->id";
-		Executor::doit($sql);
+		$sql = "DELETE FROM " . self::$tablename . " WHERE id=$this->id";
+		return Executor::doit($sql);
 	}
 
 	public static function getById($id)
 	{
-		$sql = "select * from " . self::$tablename . " where id=$id";
+		$sql = "SELECT * FROM " . self::$tablename . " WHERE id = '$id'";
 		$query = Executor::doit($sql);
 		return Model::one($query[0], new OperationData());
 	}
 
-	public static function getAll()
+	public static function getByBranchOfficeTypeId($branchOfficeId, $categoryId)
 	{
-		$sql = "select * from " . self::$tablename;
+		$sql = "SELECT id,created_at,description 
+		FROM " . self::$tablename . " 
+		WHERE operation_category_id = '$categoryId' 
+		AND branch_office_id = '$branchOfficeId'
+		ORDER BY created_at DESC";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new OperationData());
 	}
 
-	public static function getConceptsId($id)
+	/*-----------EXPENSES/PURCHASES----------- */
+	public function addExpense()
 	{
-		$sql = "SELECT  GROUP_CONCAT(o.q,' ',p.name)con 
-		FROM " . self::$tablename . " o, " . ProductData::$tablename . " p 
-		WHERE o.sell_id='$id' AND p.id=o.product_id GROUP BY o.sell_id";
-		$query = Executor::doit($sql);
-		return Model::one($query[0], new OperationData());
-	}
-
-	public static function getAllByDateOfficial($start, $end)
-	{
-		$sql = "select * from " . self::$tablename . " WHERE date(created_at) >= \"$start\" 
-		AND date(created_at) <= \"$end\" order by created_at desc";
-		if ($start == $end) {
-			$sql = "select * from " . self::$tablename . " where date(created_at) = \"$start\" order by created_at desc";
-		}
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getAllByDateOfficialBP($product, $start, $end)
-	{
-		$sql = "select * from " . self::$tablename . " where date(created_at) >= \"$start\" 
-		AND date(created_at) <= \"$end\" and product_id=$product order by created_at desc";
-		if ($start == $end) {
-			$sql = "select * from " . self::$tablename . " where date(created_at) = \"$start\" order by created_at desc";
-		}
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public function getProduct()
-	{
-		return ProductData::getById($this->product_id);
-	}
-	public function getOperationtype()
-	{
-		return OperationTypeData::getById($this->operation_type_id);
-	}
-
-	public static function getStockByProduct($productId)
-	{
-		$quantity = 0;
-		$operations = self::getAllByProductId($productId);
-		$input_id = OperationTypeData::getByName("entrada")->id;
-		$output_id = OperationTypeData::getByName("salida")->id;
-
-		foreach ($operations as $operation) {
-			if ($operation->operation_type_id == $input_id) {
-				$quantity += $operation->q;
-			} else if ($operation->operation_type_id == $output_id) {
-				$quantity += (-$operation->q);
-			}
-		}
-
-		return $quantity;
-	}
-
-	public static function getStockByProductDate($productId,$date)
-	{
-		$quantity = 0;
-		$operations = self::getAllByProductMaxDate($productId,$date);
-		$input_id = OperationTypeData::getByName("entrada")->id;
-		$output_id = OperationTypeData::getByName("salida")->id;
-
-		foreach ($operations as $operation) {
-			if ($operation->operation_type_id == $input_id) {
-				$quantity += $operation->q;
-			} else if ($operation->operation_type_id == $output_id) {
-				$quantity += (-$operation->q);
-			}
-		}
-
-		return $quantity;
-	}
-
-	public static function getTotalInputsByProductDates($productId,$startDate,$endDate)
-	{
-		$startDateTime = $startDate." 00:00:00";
-		$endDateTime = $endDate." 23:59:59";
-
-		//Obtiene el total de ventas realizadas por producto
-		$sql = "SELECT product_id,SUM(q) total FROM " . self::$tablename . " 
-			WHERE operation_type_id='1' 
-			AND product_id = '$productId' 
-			AND created_at >= '$startDateTime'
-			AND created_at <= '$endDateTime'
-			GROUP BY product_id";
-		$query = Executor::doit($sql);
-		return Model::one($query[0], new OperationData());
-	}
-
-	public static function getAllByProductIdCutId($product_id, $cut_id)
-	{
-		$sql = "select * from " . self::$tablename . " WHERE product_id=$product_id and cut_id=$cut_id order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getAllByProductId($productId)
-	{
-		$sql = "select id,product_id,q,price,operation_type_id,sell_id,
-		DATE_FORMAT(created_at,'%d-%m-%Y')fecha,created_at,dateExpiry,DATE_FORMAT(dateExpiry,'%d-%m-%Y')expiration_date_format,lot
-		FROM " . self::$tablename . " where product_id=$productId  order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getAllByProductMaxDate($productId,$date)
-	{
-		$maxdateTime = $date." 23:59:59";
-
-		$sql = "SELECT id,product_id,q,price,operation_type_id,sell_id,
-			DATE_FORMAT(created_at,'%d-%m-%Y')fecha,created_at,dateExpiry,lot
-			FROM " . self::$tablename . " 
-			WHERE product_id='$productId' AND created_at <= '$maxdateTime'
-			ORDER BY created_at desc";
-
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getAllExpirationDatesByProduct($productId)
-	{
-		//Obtiene todas las fechas de expiración(lotes de produto)
-		$sql = "SELECT product_id,SUM(q)q,DATE_FORMAT(dateExpiry,'%d/%m/%Y')as dateExpiry,DATE_FORMAT(dateExpiry,'%m')as mes,
-			DATE_FORMAT(dateExpiry,'%Y')as exp, DATE_FORMAT(dateExpiry,'%Y%m')as con,timestampdiff(month,curdate(),dateExpiry) difM,
-			lot 
-			FROM " . self::$tablename . " 
-			WHERE operation_type_id='1' AND product_id='$productId'
-			GROUP BY product_id,dateExpiry ORDER BY con ASC";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getExpirationDatesByProductMaxDate($productId,$date)
-	{
-		//Obtiene todas las fechas de expiración(lotes de produto) registradas antes de cierta fecha 
-		$maxdateTime = $date." 23:59:59";
-
-		$sql = "SELECT product_id,SUM(q)q,DATE_FORMAT(dateExpiry,'%d/%m/%Y')as dateExpiry,DATE_FORMAT(dateExpiry,'%m')as mes,
-			DATE_FORMAT(dateExpiry,'%Y')as exp, DATE_FORMAT(dateExpiry,'%Y%m')as con,timestampdiff(month,curdate(),dateExpiry) difM,
-			lot 
-			FROM " . self::$tablename . " 
-			WHERE operation_type_id='1' AND product_id='$productId'
-			AND created_at <= '$maxdateTime'
-			GROUP BY product_id,dateExpiry ORDER BY con ASC";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getTotalSalesByProduct($productId)
-	{
-		//Obtiene el total de ventas realizadas por producto
-		$sql = "SELECT product_id,SUM(q) q FROM " . self::$tablename . " 
-			WHERE operation_type_id='2' 
-			AND product_id='$productId' GROUP BY product_id";
-		$query = Executor::doit($sql);
-		return Model::one($query[0], new OperationData());
-	}
-
-	public static function getTotalSalesByProductMaxDate($productId,$date)
-	{
-		$maxdateTime = $date." 23:59:59";
-
-		//Obtiene el total de ventas realizadas por producto hasta una fecha determinada
-		$sql = "SELECT product_id,SUM(q) q FROM " . self::$tablename . " 
-			WHERE operation_type_id='2' 
-			AND created_at <= '$maxdateTime'
-			AND product_id='$productId' GROUP BY product_id";
-		$query = Executor::doit($sql);
-		return Model::one($query[0], new OperationData());
-	}
-
-	public static function getTotalSalesByProductDates($productId,$startDate,$endDate)
-	{
-		//No incluir todas las salidas, si no solamente las ventas.
-		$startDateTime = $startDate." 00:00:00";
-		$endDateTime = $endDate." 23:59:59";
-
-		//Obtiene el total de ventas realizadas por producto en fechas específicas
-		$sql = "SELECT o.product_id,SUM(o.q) total FROM " . self::$tablename . " o
-			INNER JOIN  " . SellData::$tablename . " s ON o.sell_id = s.id
-			AND s.idPac IS NOT NULL AND s.idPac != 0
-			WHERE o.operation_type_id = '2' AND o.product_id='$productId' 
-			AND o.created_at >= '$startDateTime' AND o.created_at <= '$endDateTime'
-			GROUP BY product_id";
-
-		$query = Executor::doit($sql);
-		return Model::one($query[0], new OperationData());
-	}
-
-	public static function getAllProductsBySellId($sell_id)
-	{
-		$sql = "select * from " . self::$tablename . " where sell_id=$sell_id order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getAllByConcepts($sell_id)
-	{
-		$sql = "SELECT product_id,q,price FROM " . self::$tablename . " WHERE sell_id='$sell_id'";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getnamePro($id)
-	{
-		$sql = "SELECT name,type,price_out FROM " . ProductData::$tablename . " WHERE id='$id'";
-		$query = Executor::doit($sql);
-		return Model::one($query[0], new OperationData());
-	}
-
-	public static function getOutputQ($product_id, $cut_id)
-	{
-		$q = 0;
-		$operations = self::getOutputByProductIdCutId($product_id, $cut_id);
-		$input_id = OperationTypeData::getByName("entrada")->id;
-		$output_id = OperationTypeData::getByName("salida")->id;
-		foreach ($operations as $operation) {
-			if ($operation->operation_type_id == $input_id) {
-				$q += $operation->q;
-			} else if ($operation->operation_type_id == $output_id) {
-				$q += (-$operation->q);
-			}
-		}
-		// print_r($data);
-		return $q;
-	}
-
-	public static function getOutputQYesF($product_id)
-	{
-		$q = 0;
-		$operations = self::getOutputByProductId($product_id);
-		$input_id = OperationTypeData::getByName("entrada")->id;
-		$output_id = OperationTypeData::getByName("salida")->id;
-		foreach ($operations as $operation) {
-			if ($operation->operation_type_id == $input_id) {
-				$q += $operation->q;
-			} else if ($operation->operation_type_id == $output_id) {
-				$q += (-$operation->q);
-			}
-		}
-		return $q;
-	}
-
-	public static function getInputQYesF($product_id)
-	{
-		$q = 0;
-		$operations = self::getInputByProductId($product_id);
-		$input_id = OperationTypeData::getByName("entrada")->id;
-		foreach ($operations as $operation) {
-			if ($operation->operation_type_id == $input_id) {
-				$q += $operation->q;
-			}
-		}
-		return $q;
-	}
-
-	public static function getOutputByProductIdCutId($product_id, $cut_id)
-	{
-		$sql = "select * from " . self::$tablename . " where product_id=$product_id and cut_id=$cut_id and operation_type_id=2 order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getOutputByProductId($product_id)
-	{
-		$sql = "select * from " . self::$tablename . " where product_id=$product_id and operation_type_id=2 order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getInputQ($product_id, $cut_id)
-	{
-		$q = 0;
-		$operations = self::getInputByProductId($product_id);
-		$input_id = OperationTypeData::getByName("entrada")->id;
-		$output_id = OperationTypeData::getByName("salida")->id;
-		foreach ($operations as $operation) {
-			if ($operation->operation_type_id == $input_id) {
-				$q += $operation->q;
-			} else if ($operation->operation_type_id == $output_id) {
-				$q += (-$operation->q);
-			}
-		}
-		return $q;
-	}
-
-	public static function getInputByProductIdCutId($product_id, $cut_id)
-	{
-		$sql = "select * from " . self::$tablename . " where product_id=$product_id and cut_id=$cut_id and operation_type_id=1 order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getInputByProductId($productId)
-	{
-		$sql = "select * from " . self::$tablename . " 
-		WHERE product_id=$productId 
-		AND operation_type_id=1 order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	public static function getInputByProductIdCutIdYesF($product_id, $cut_id)
-	{
-		$sql = "select * from " . self::$tablename . " where product_id=$product_id and cut_id=$cut_id and operation_type_id=1 order by created_at desc";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new OperationData());
-	}
-
-	//------------------------PAYMENTS-------------------------------------
-
-	public function addPay()
-	{
-		$sql = "insert into " . self::$tablenamePayments . " (idTypePay,idSell,cash,typePay,date,bank_account_id,is_invoice) ";
-		$sql .= "value ($this->idType,$this->sell_id,$this->money,'INGRESOS',\"$this->date\",\"$this->bank_account_id\",\"$this->is_invoice\")";
+		$sql = "INSERT INTO  " . self::$tablename . " (total,user_id,status_id,operation_type_id,operation_category_id,description,branch_office_id) ";
+		$sql .= "VALUE ($this->total,$this->user_id,$this->status_id,1,3,\"$this->description\",\"$this->branch_office_id\")";
 		return Executor::doit($sql);
 	}
 
-	public function addPay1()
+	public static function getAllExpensesByBranchOfficeDate($branchOfficeId, $date)
 	{
-		$sql = "insert into " . self::$tablenamePayments . " (idTypePay,idSell,cash,typePay,date,bank_account_id,is_invoice) ";
-		$sql .= "value ($this->idType,$this->sell_id,$this->money,'INGRESOS',\"$this->fecha\",\"$this->bank_account_id\",\"$this->is_invoice\")";
-		return Executor::doit($sql);
-	}
-
-	public function addPayB()
-	{
-		$sql = "insert into " . self::$tablenamePayments . " (idTypePay,idSell,cash,typePay,date) ";
-		$sql .= "value ($this->idType,$this->buyId,$this->money,'EGRESOS','$this->date')";
-		return Executor::doit($sql);
-	}
-
-	public function addPayB1()
-	{
-		$sql = "insert into " . self::$tablenamePayments . " (idTypePay,idSell,cash,typePay,date) ";
-		$sql .= "value ($this->idType,$this->buyId,$this->money,'EGRESOS',\"$this->fecha\")";
-		return Executor::doit($sql);
-	}
-
-	public function delPayB($id)
-	{
-		$sql = "delete from " . self::$tablenamePayments . " where id=$id";
-		Executor::doit($sql);
-	}
-
-	public static function getAllBySellPay($sell_id)
-	{
-		$sql = "SELECT t.name tname,p.cash from " . self::$tablenamePayments . " p, typepayment t where p.idSell='$sell_id' AND p.idTypePay=t.id";
+		$sql = "SELECT od.product_id,od.quantity,od.price 
+			FROM operation_details od,operations s 
+			WHERE od.operation_type_id = '1'
+			AND s.status_id = '1' 
+			AND od.created_at like '$date%' 
+			AND s.id = od.operation_id 
+			AND s.branch_office_id = '$branchOfficeId'";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new OperationData());
 	}
 
-	public static function getAllBySellPayCon($sell_id)
+	public static function getAllExpensesByBranchOfficeDates($branchOfficeId, $startDate,$endDate)
 	{
-		$sql = "SELECT  GROUP_CONCAT(t.name,': ',p.cash)tpay from " . self::$tablenamePayments . " p, typepayment t where p.idSell='$sell_id' AND p.idTypePay=t.id";
+		$startDateTime = $startDate . " 00:00:00";
+		$endDateTime = $endDate . " 23:59:59";
+
+		$sql = "SELECT od.product_id,od.quantity,od.price 
+			FROM operation_details od,operations s 
+			WHERE od.operation_type_id = '1'
+			AND s.status_id = '1' 
+			AND od.created_at >='$startDateTime' 
+			AND od.created_at <='$endDateTime' 
+			AND s.id = od.operation_id 
+			AND s.branch_office_id = '$branchOfficeId'";
+
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new OperationData());
+	}
+
+	/*-------------------SALES---------------*/
+	public static function getAccountStatusByPatient($id)
+	{
+		$sql = "SELECT id,total,DATE_FORMAT(created_at,'%d/%m/%Y') AS date_format,patient_id,medic_id,status_id,description,
+		CONCAT(ELT(WEEKDAY(created_at) + 1, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo')) AS day_name 
+		FROM " . self::$tablename . " 
+		WHERE patient_id = '$id' 
+		ORDER BY id ASC";
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new OperationData());
+	}
+
+	public static function getAllSalesByBranchOfficeDates($branchOfficeId, $startDate, $endDate, $paymentTypeId, $statusId = "all",$productId="all")
+	{
+		$startDateTime = $startDate . " 00:00:00";
+		$endDateTime = $endDate . " 23:59:59";
+		//Obtiene todas las ventas generadas en cierta fecha. No importa si están liquidadas o no.
+		$sql = "SELECT s.medic_id,s.status_id,s.description,s.bank,s.invoice_number,s.id,
+			s.total,s.created_at,s.is_invoice,p.name AS patient_name,reservation_id,
+			CONCAT(ELT(WEEKDAY(s.created_at) + 1, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo')) AS day_name, 
+			DATE_FORMAT(s.created_at,'%d/%m/%Y') AS date_format  
+			FROM  " . self::$tablename . " s, patients p 
+			WHERE p.id = s.patient_id 
+			AND (s.created_at >= '$startDateTime' AND s.created_at <= '$endDateTime')
+			AND operation_type_id = '2' 
+			AND s.branch_office_id = '$branchOfficeId' ";
+		if ($paymentTypeId != "all" && $paymentTypeId != "0" && $paymentTypeId != "") {
+			$sql .= " AND (SELECT opp.id FROM " . OperationPaymentData::$tablename . " opp 
+				WHERE opp.operation_id = s.id 
+				AND opp.payment_type_id = '$paymentTypeId' LIMIT 1) 
+				IS NOT NULL ";
+		}
+		if ($productId != "all" && $productId != "") {
+			$sql .= " AND (SELECT odd.id FROM " . OperationDetailData::$tablename . " odd 
+				WHERE odd.operation_id = s.id 
+				AND odd.product_id = '$productId' LIMIT 1) 
+				IS NOT NULL ";
+		}
+
+		if ($statusId != "all") {
+			$sql .= " AND s.status_id = '$statusId' ";
+		}
+		$sql .= " ORDER BY s.id";
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new OperationData());
+	}
+
+
+	public static function getAllSelledProductsByBranchOfficeDate($branchOfficeId, $date)
+	{
+		//Obtiene el total vendido de los productos por día
+		$sql = "SELECT product_id,SUM(quantity) quantity,SUM(price) price,SUM(price*quantity) total,patient_id,medic_id,s.status_id 
+		FROM operation_details o,operations s 
+		WHERE o.operation_type_id = '2' 
+		AND s.status_id = '1' 
+		AND o.created_at LIKE '$date%' 
+		AND s.id = o.operation_id 
+		AND s.branch_office_id = '$branchOfficeId'
+		GROUP BY product_id";
+
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new OperationData());
+	}
+
+	public static function getAllMedicSalesByProductDate($branchOfficeId, $productId, $date)
+	{
+		//Obtiene todos los Psicólogos que han vendido cierto producto 
+		//en cierta fecha y la cantidad de producto vendida y la ganancia generada por médico.
+		//Las ventas deben de estar liquidadas para mostrarlas.
+		$sql = "SELECT product_id,SUM(quantity)quantity,SUM(price) price,patient_id,medic_id 
+			FROM operation_details o," . self::$tablename . " s 
+			WHERE o.operation_type_id='2' 
+			AND s.branch_office_id = '$branchOfficeId'
+			AND o.created_at LIKE '$date%' 
+			AND s.id=o.operation_id 
+			AND product_id='$productId' AND s.status_id='1' 
+			GROUP BY product_id,medic_id";
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new OperationData());
+	}
+
+	public static function getAllProductSalesByDate($date)
+	{
+		//Obtiene los totales vendidos por medicamentos en cierta fecha
+		$sql = "SELECT product_id,SUM(o.quantity)quantity,(o.price)price,
+				SUM(o.price*o.quantity)total
+                FROM operation_details o, products p, " . self::$tablename . " s 
+				WHERE o.operation_type_id='2' 
+                AND o.created_at like '$date%' 
+				AND p.id = o.product_id 
+				AND p.type_id = 4
+                AND s.`status_id`='1' AND  s.id = o.operation_id 
+				GROUP BY o.product_id";
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new OperationData());
+	}
+
+	public static function getLastSaleByReservationId($reservationId)
+	{
+		$sql = "SELECT s.id,s.status_id FROM " . self::$tablename . " s
+		WHERE s.id = (SELECT MAX(s_sq.id) FROM " . self::$tablename . " s_sq WHERE s_sq.reservation_id = '$reservationId')
+		LIMIT 1";
 		$query = Executor::doit($sql);
 		return Model::one($query[0], new OperationData());
 	}
 
-	public static function getAllBySellPayE($sell_id)
+	/*-----------INGRESOS/INPUTS--------- */
+
+	public static function getInputsSales($branchOfficeId, $paymentTypeId, $startDate, $endDate)
 	{
-		$sql = "SELECT SUM(p.cash)cash from " . self::$tablenamePayments . " p where p.idSell='$sell_id' group by idSell";
+		$startDateTime = $startDate . " 00:00:00";
+		$endDateTime = $endDate . " 23:59:59";
+
+		$sql = "SELECT p.total total,s.bank,s.is_invoice 
+			FROM " . OperationPaymentData::$tablename . " p," . self::$tablename . " s  
+			WHERE  p.payment_type_id = '$paymentTypeId' 
+			AND s.branch_office_id = '$branchOfficeId'
+			AND s.id = p.operation_id 
+			AND s.operation_category_id='1' 
+			AND (date >= '$startDateTime' AND date <= '$endDateTime')";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new OperationData());
 	}
 
-	public static function getAllPayBySellId($sell_id)
+	/*-----------SALIDAS/OUTPUTS------------ */
+	public static function getOutputsExpenses($branchOfficeId, $paymentTypeId, $startDate, $endDate)
 	{
-		$sql = "select p.cash, t.name from " . self::$tablenamePayments . " p, typepayment t where idSell=$sell_id AND t.id=p.idTypePay";
+		$startDateTime = $startDate . " 00:00:01";
+		$endDateTime = $endDate . " 23:59:59";
+
+		$sql = "SELECT p.total total,s.bank,s.is_invoice 
+		FROM " . OperationPaymentData::$tablename . " p," . self::$tablename . " s  
+		WHERE  p.payment_type_id = '$paymentTypeId'
+			AND s.branch_office_id = '$branchOfficeId'
+			AND s.id = p.operation_id
+			AND s.operation_category_id = '3' 
+			AND (p.date >= '$startDateTime' AND p.date <= '$endDateTime')";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new OperationData());
 	}
 
-	//Actualiza una operación (pago) identificando si se utiliza factura o no
-	public function updatePaymentIsInvoice($id, $isInvoice)
+	/*-------------CASHIER BALANCE/CORTE DE CAJA */
+	public static function getByReservationProductStatus($reservationId, $productId = 0, $statusId = "all")
 	{
-		$sql = "UPDATE " . self::$tablenamePayments . " SET is_invoice = '$isInvoice' WHERE id = '$id'";
-		return Executor::doit($sql);
-	}
+		$sql = "SELECT o.* FROM 
+		" . self::$tablename . " o
+		INNER JOIN " . OperationDetailData::$tablename . " od ON od.operation_id = o.id
+		WHERE o.reservation_id = '$reservationId' ";
+		if ($productId != "0") {
+			$sql .= " AND od.product_id = '$productId' ";
+		}
+		if ($statusId != "all") {
+			$sql .= " AND o.status_id = '$statusId' ";
+		}
+		$sql .= " LIMIT 1 ";
 
+		$query = Executor::doit($sql);
+		return Model::one($query[0], new OperationData());
+	}
 }

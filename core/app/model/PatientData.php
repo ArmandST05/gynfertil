@@ -1,8 +1,9 @@
 <?php
 class PatientData
 {
-	public static $tablename = "pacient";
-	public static $tablenameSexes = "sexes";
+	public static $tablename = "patients";
+	public static $tablenameFiles = "patient_files";
+	public static $tablenameCategories = "patient_categories";
 	public static $months = ["01" => "Enero", "02" => "Febrero", "03" => "Marzo", "04" => "Abril", "05" => "Mayo", "06" => "Junio", "07" => "Julio", "08" => "Agosto", "09" => "Septiembre", "10" => "Octubre", "11" => "Noviembre", "12" => "Diciembre"];
 
 	public function __construct()
@@ -14,42 +15,13 @@ class PatientData
 		$this->is_public = "0";
 		$this->created_at = "NOW()";
 	}
-	public function getMedic()
-	{
-		return MedicData::getById($this->medic_id);
-	}
-
-	public function getSex()
-	{
-		return PatientData::getSexById($this->sex_id);
-	}
-
-	public function getType()
-	{
-		return MedicTypeData::getById($this->type_id);
-	}
-
-	public function getLastPapanicolaouTestDate()
-	{
-		$papanicolaouTest =  ReservationData::getLastPapsTestByPatient($this->id);
-		if ($papanicolaouTest) {
-			return $papanicolaouTest->date_format;
-		} else {
-			return 'No se ha realizado.';
-		}
-	}
-
-	public function getCate()
-	{
-		return MedicData::getById($this->medic_id);
-	}
 
 	public function getAge()
 	{
-		if ($this->fecha_na && $this->fecha_na != "0000-00-00") {
+		if ($this->birthday && $this->birthday != 0000 - 00 - 00) {
 			//Edad del paciente
-			$date = date('Y-m-d');
-			$diff = abs(strtotime($date) - strtotime($this->fecha_na));
+			$date2 = date('Y-m-d');
+			$diff = abs(strtotime($date2) - strtotime($this->birthday));
 			$years = floor($diff / (365 * 60 * 60 * 24));
 			if ($years == 1) {
 				return $years = $years . " Año";
@@ -61,12 +33,12 @@ class PatientData
 		}
 	}
 
-	public function getRelativeAge()
+	public function getAgeByBirthdayDate($birthday)
 	{
-		if ($this->relative_birthday && $this->relative_birthday != "0000-00-00") {
+		if ($birthday && $birthday != 0000 - 00 - 00) {
 			//Edad del paciente
-			$date = date('Y-m-d');
-			$diff = abs(strtotime($date) - strtotime($this->relative_birthday));
+			$date2 = date('Y-m-d');
+			$diff = abs(strtotime($date2) - strtotime($birthday));
 			$years = floor($diff / (365 * 60 * 60 * 24));
 			if ($years == 1) {
 				return $years = $years . " Año";
@@ -81,26 +53,9 @@ class PatientData
 	public function getAgeByDate($date)
 	{
 		//Calcula la edad del paciente en una fecha determinada
-		if ($this->fecha_na && $this->fecha_na != "0000-00-00") {
+		if ($this->birthday && $this->birthday != 0000 - 00 - 00) {
 			//Edad del paciente
-			$diff = abs(strtotime($date) - strtotime($this->fecha_na));
-			$years = floor($diff / (365 * 60 * 60 * 24));
-			if ($years == 1) {
-				return $years = $years . " Año";
-			} else {
-				return $years = $years . " Años";
-			}
-		} else {
-			return "No especificada.";
-		}
-	}
-
-	public function getRelativeAgeByDate($date)
-	{
-		//Calcula la edad de la pareja del paciente en una fecha determinada
-		if ($this->relative_birthday && $this->relative_birthday != "0000-00-00") {
-			//Edad del paciente
-			$diff = abs(strtotime($date) - strtotime($this->relative_birthday));
+			$diff = abs(strtotime($date) - strtotime($this->birthday));
 			$years = floor($diff / (365 * 60 * 60 * 24));
 			if ($years == 1) {
 				return $years = $years . " Año";
@@ -115,10 +70,10 @@ class PatientData
 	public function getBirthdayFormat()
 	{
 		//Obtiene la fecha de nacimiento con el nombre del mes del paciente
-		if ($this->fecha_na && $this->fecha_na != "0000-00-00") {
-			$day = substr($this->fecha_na, 8, 2);
-			$month = substr($this->fecha_na, 5, 2);
-			$year = substr($this->fecha_na, 0, 4);
+		if ($this->birthday && $this->birthday != 0000 - 00 - 00) {
+			$day = substr($this->birthday, 8, 2);
+			$month = substr($this->birthday, 5, 2);
+			$year = substr($this->birthday, 0, 4);
 
 			return $day . "/" . self::$months[$month] . "/" . $year;
 		} else {
@@ -126,13 +81,13 @@ class PatientData
 		}
 	}
 
-	public function getRelativeBirthdayFormat()
+	public function getDateFormat($date)
 	{
-		//Obtiene la fecha de nacimiento con el nombre del mes de la pareja del paciente
-		if ($this->relative_birthday && $this->relative_birthday != "0000-00-00") {
-			$day = substr($this->relative_birthday, 8, 2);
-			$month = substr($this->relative_birthday, 5, 2);
-			$year = substr($this->relative_birthday, 0, 4);
+		//Obtiene la fecha de nacimiento con el nombre del mes del paciente
+		if ($date && $date != 0000 - 00 - 00) {
+			$day = substr($date, 8, 2);
+			$month = substr($date, 5, 2);
+			$year = substr($date, 0, 4);
 
 			return $day . "/" . self::$months[$month] . "/" . $year;
 		} else {
@@ -140,257 +95,349 @@ class PatientData
 		}
 	}
 
-	public function getPatientOfficialData()
+	public function getMedic()
 	{
-		//Se muestra el dato oficial del paciente.
-		$officialDocument = new stdClass();
-		$officialDocumentData = OfficialDocumentData::getById($this->official_document_id);
-		if ($officialDocumentData) {
-			$officialDocument->id = $officialDocumentData->id;
-			$officialDocument->name = $officialDocumentData->name;
-			$officialDocument->value = $this->official_document_value;
-		} else {
-			$officialDocument->id = "";
-			$officialDocument->name = "Dato oficial";
-			$officialDocument->value = "No asignado";
-		}
-
-		return $officialDocument;
+		return MedicData::getById($this->medic_id);
 	}
 
-	public function getRelativeOfficialData()
+	public function getSex()
 	{
-
-		//Se muestra el dato oficial de la pareja del paciente cuando no tiene un registro de paciente independiente.
-		$officialDocument = new stdClass();
-		$officialDocumentData = OfficialDocumentData::getById($this->relative_official_document_id);
-		if ($officialDocumentData) {
-			$officialDocument->id = $officialDocumentData->id;
-			$officialDocument->name = $officialDocumentData->name;
-			$officialDocument->value = $this->relative_official_document_value;
-		} else {
-			$officialDocument->id = "";
-			$officialDocument->name = "Dato oficial";
-			$officialDocument->value = "No asignado";
-		}
-
-		return $officialDocument;
+		return SexData::getById($this->sex_id);
 	}
+
+	public function getEducationLevel()
+	{
+		return EducationLevelData::getById($this->education_level_id);
+	}
+
+	public function getCounty()
+	{
+		return CountyData::getById($this->county_id);
+	}
+
+	public function getLastByPatientId()
+	{
+		return ReservationData::getLastByPatientId($this->id);
+	}
+
+	public function getLastTreatment()
+	{
+		return TreatmentData::getLastPatientTreatment($this->id);
+	}
+
+	public function getCategory()
+	{
+		return PatientData::getCategoryById($this->category_id);
+	}
+
+	public function getCompany()
+	{
+		return CompanyData::getById($this->company_id);
+	}
+
+	public function getBranchOffice()
+	{
+		return BranchOfficeData::getById($this->branch_office_id);
+	}
+
+	public function getTotalReservations()
+	{
+		//Mostrar las consultas que se han realizado en ese tratamiento status = 2 (Asistió)
+		return ReservationData::getTotalReservationsByPatient($this->id, 2);
+	}
+
 
 	public function add()
 	{
-		$sql = "INSERT INTO " . self::$tablename . " (name,sex_id,relative_id,relative_name,tel,created_at,status,image) ";
-		$sql .= "value (\"$this->name\",\"$this->sex_id\",\"$this->relative_id\",\"$this->relative_name\",\"$this->tel\",$this->created_at,'2',\"$this->image\")";
+		$sql = "INSERT INTO " . self::$tablename . " (name,sex_id,curp,street,number,colony,county_id,cellphone,homephone,email,birthday,referred_by,relative_name,category_id,branch_office_id,observations,company_id,education_level_id,occupation,image) ";
+		$sql .= "value (\"$this->name\",\"$this->sex_id\",\"$this->curp\",\"$this->street\",\"$this->number\",\"$this->colony\",\"$this->county_id\",\"$this->cellphone\",\"$this->homephone\",\"$this->email\",\"$this->birthday\",\"$this->referred_by\",\"$this->relative_name\",\"$this->category_id\",\"$this->branch_office_id\",\"$this->observations\",\"$this->company_id\",\"$this->education_level_id\",\"$this->occupation\",\"$this->image\")";
 		return Executor::doit($sql);
 	}
 
-	public static function delById($id)
+	public function delete()
 	{
-		$sql = "delete from " . self::$tablename . " where id='$id'";
-		Executor::doit($sql);
-	}
-	public function del()
-	{
-		$sql = "delete from " . self::$tablename . " where id=$this->id";
-		Executor::doit($sql);
-	}
-	// partiendo de que ya tenemos creado un objecto PatientData previamente utilizamos el contexto
-	public function update_active()
-	{
-		$sql = "update " . self::$tablename . " set last_active_at=NOW() where id=$this->id";
+		$sql = "DELETE FROM " . self::$tablename . " WHERE id = $this->id";
 		Executor::doit($sql);
 	}
 
-	public static function getAllByPage($start_from, $limit)
+	public function update_active()
 	{
-		$sql = "select * from " . self::$tablename . " where id>=$start_from limit $limit";
+		$sql = "update " . self::$tablename . " set last_active_at=NOW() WHERE id=$this->id";
+		Executor::doit($sql);
+	}
+
+	public static function getAllByPage($start_FROM, $limit)
+	{
+		$sql = "SELECT * FROM " . self::$tablename . " WHERE id>=$start_FROM limit $limit";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
 	public function update()
 	{
-		$sql = "UPDATE " . self::$tablename . " set name=\"$this->name\",sex_id=\"$this->sex_id\",relative_id=\"$this->relative_id\",relative_name=\"$this->relative_name\",calle=\"$this->calle\",num=\"$this->num\",num=\"$this->num\",col=\"$this->col\",tel=\"$this->tel\",tel2=\"$this->tel2\",email=\"$this->email\",fecha_na=\"$this->fecha_na\",relative_birthday=\"$this->relative_birthday\",ref=\"$this->ref\",status=\"$this->estatus\",official_document_id=\"$this->official_document_id\",official_document_value=\"$this->official_document_value\",relative_official_document_id=\"$this->relative_official_document_id\",relative_official_document_value=\"$this->relative_official_document_value\",image=\"$this->image\" where id=$this->id";
+		$sql = "update " . self::$tablename . " set name=\"$this->name\",sex_id=\"$this->sex_id\",curp=\"$this->curp\",relative_name=\"$this->relative_name\",street=\"$this->street\",number=\"$this->number\",colony=\"$this->colony\",county_id=\"$this->county_id\",cellphone=\"$this->cellphone\",homephone=\"$this->homephone\",email=\"$this->email\",birthday=\"$this->birthday\",referred_by=\"$this->referred_by\",relative_name=\"$this->relative_name\",branch_office_id=\"$this->branch_office_id\",observations=\"$this->observations\",company_id=\"$this->company_id\",education_level_id=\"$this->education_level_id\",occupation=\"$this->occupation\",image=\"$this->image\" WHERE id=$this->id";
 		return Executor::doit($sql);
 	}
 
-	public function update2()
+	public function updatePatientCategory()
 	{
-		$sql = "update " . self::$tablename . " set name=\"$this->name\",sex_id=\"$this->sex_id\",relative_name=\"$this->relative_name\",calle=\"$this->calle\",num=\"$this->num\",num=\"$this->num\",col=\"$this->col\",tel=\"$this->tel\",tel2=\"$this->tel2\",email=\"$this->email\",fecha_na=\"$this->fecha_na\",ref=\"$this->ref\",edad=\"$this->edad\",
-		relative_id=\"$this->relative_id\",relative_name=\"$this->relative_name\",relative_birthday=\"$this->relative_birthday\",official_document_id=\"$this->official_document_id\",official_document_value=\"$this->official_document_value\",relative_official_document_id=\"$this->relative_official_document_id\",relative_official_document_value=\"$this->relative_official_document_value\"
-		WHERE id=$this->id";
+		$sql = "UPDATE " . self::$tablename . " SET category_id = $this->category_id WHERE id=$this->id";
+		Executor::doit($sql);
+	}
+
+	public function updateByInterview()
+	{
+		$sql = "UPDATE " . self::$tablename . " SET name=\"$this->name\",relative_name=\"$this->relative_name\",street=\"$this->street\",number=\"$this->number\",colony=\"$this->colony\",county_id=\"$this->county_id\",cellphone=\"$this->cellphone\",homephone=\"$this->homephone\",birthday=\"$this->birthday\",education_level_id=\"$this->education_level_id\",occupation=\"$this->occupation\" WHERE id=$this->id";
 		return Executor::doit($sql);
 	}
 
-	//Actualiza la pareja de un paciente
-	public function updateRelative()
+	public function updateNotes()
 	{
-		$sql = "UPDATE " . self::$tablename . " SET relative_id=\"$this->relative_id\" WHERE id = $this->id";
+		$sql = "UPDATE " . self::$tablename . " set notes=\"$this->notes\" WHERE id=$this->id";
 		return Executor::doit($sql);
 	}
 
-	//Elimina la pareja de los pacientes que la tengan asignada, para que no existan duplicados.
-	public static function deleteRelative($relativeId)
+	public function updateAssistant($colonia)
 	{
-		$sql = "UPDATE " . self::$tablename . " SET relative_id = 0 WHERE relative_id = '$relativeId'";
-		return Executor::doit($sql);
+		$sql = "update " . self::$tablename . " set name=\"$this->name\",curp=\"$this->curp\",relative_name=\"$this->relative_name\",street=\"$this->street\",number=\"$this->number\",colony=\"$this->colony\",cellphone=\"$this->cellphone\",homephone=\"$this->homephone\",email=\"$this->email\",birthday=\"$this->birthday\",referred_by=\"$this->referred_by\" WHERE id=$this->id";
+		Executor::doit($sql);
 	}
 
 	public static function getById($id)
 	{
-		$sql = "SELECT " . self::$tablename . ".*,
-		DATE_FORMAT(" . self::$tablename . ".fecha_na,'%d/%m/%Y') as birthday_format,
-		DATE_FORMAT(" . self::$tablename . ".relative_birthday,'%d/%m/%Y') as relative_birthday_format 
-		FROM " . self::$tablename . " where id = $id AND doctor='0'";
+		$sql = "SELECT *,DATE_FORMAT(birthday,'%d/%m/%Y') AS birthday_format FROM " . self::$tablename . " WHERE id = '$id'";
 		$query = Executor::doit($sql);
 		return Model::one($query[0], new PatientData());
 	}
 
-	public static function getById1($id)
+	public static function getByName($name)
 	{
-		$sql = "select * from " . self::$tablename . " where id=$id";
+		$sql = "SELECT *,DATE_FORMAT(birthday,'%d/%m/%Y') AS birthday_format FROM " . self::$tablename . " WHERE name = '$name' LIMIT 1";
 		$query = Executor::doit($sql);
 		return Model::one($query[0], new PatientData());
 	}
 
-	public static function getAllByName($nom)
+	public static function getAll($categoryId)
 	{
-		$sql = "select * from " . self::$tablename . " WHERE name like '%$nom%' AND doctor='0' order by created_at DESC";
+		$sql = "SELECT * FROM " . self::$tablename . " ";
+		if($categoryId == "active"){
+			$sql.= " WHERE category_id != 3 ";
+		}
+		$sql.= " ORDER BY id DESC";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
-	public static function getAll_tipo($tipo)
+	public static function getAllByCreatedAt($branchOfficeId, $startDate, $endDate, $medicId = 0)
 	{
-		$sql = "select * from " . self::$tablename . " WHERE tipo_usuario='$tipo'  ORDER BY DESC";
+		$startDateTime = $startDate . " 00:00:01";
+		$endDateTime = $endDate . " 23:59:59";
+		$sql = "SELECT " . self::$tablename . ".*,DATE_FORMAT(" . self::$tablename . ".created_at,'%d/%m/%Y') AS created_at_format 
+			FROM " . self::$tablename . " 
+			WHERE branch_office_id = '$branchOfficeId'
+			AND created_at >= '$startDateTime'
+			AND created_at <= '$endDateTime' ";
+		if ($medicId != 0) {
+			$sql .= " AND (SELECT " . TreatmentData::$tablenamePatientTreatments . ".id FROM " . TreatmentData::$tablenamePatientTreatments . " 
+					WHERE  " . TreatmentData::$tablenamePatientTreatments . ".patient_id = " . self::$tablename . " .id
+					AND (
+						(" . TreatmentData::$tablenamePatientTreatments . ".status_id = 1 AND " . TreatmentData::$tablenamePatientTreatments . ".start_date <= '$endDate')
+						OR (" . TreatmentData::$tablenamePatientTreatments . ".status_id != 1 AND 
+							(
+								('$startDate' BETWEEN CAST(" . TreatmentData::$tablenamePatientTreatments . ".start_date AS DATE) AND CAST(" . TreatmentData::$tablenamePatientTreatments . ".end_date AS DATE))
+								OR ('$endDate' BETWEEN CAST(" . TreatmentData::$tablenamePatientTreatments . ".start_date AS DATE) AND CAST(" . TreatmentData::$tablenamePatientTreatments . ".end_date AS DATE))
+							)
+						)
+					) AND " . TreatmentData::$tablenamePatientTreatments . ".medic_id = '$medicId' ";
+			$sql .= " ORDER BY " . TreatmentData::$tablenamePatientTreatments . ".id DESC LIMIT 1
+					) IS NOT NULL "; //Sólo pacientes con tratamiento de cierto psicólogo en las fechas seleccionados
+		}
+		$sql .= " ORDER BY name ASC ";
+
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
-	public static function estatus_paciente()
+	public static function getAllByBranchOffice($branchOfficeId,$categoryId = "all")
 	{
-		$sql = "select * from status_pacient WHERE id>0 order by id ASC";
+		$sql = "SELECT * FROM " . self::$tablename . " 
+		WHERE branch_office_id = '$branchOfficeId' ";
+		if($categoryId == "active"){
+			$sql.= " AND category_id != 3 ";
+		}
+		$sql.= " ORDER BY id DESC";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
-	
-	public static function getPatientStatusById($id)
+	public static function getPatientCategories()
 	{
-		$sql = "SELECT * FROM status_pacient WHERE id = '$id' ";
-		$query = Executor::doit($sql);
-		return Model::one($query[0], new PatientData());
-	}
-
-
-	public static function getAll()
-	{
-		//Obtener todos los pacientes reales doctor= 0
-		$sql = "select * from " . self::$tablename . " WHERE doctor='0' order by created_at desc";
+		$sql = "SELECT * FROM  patient_categories";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
-	public static function getAllMedics()
+	public static function get_registro_patientse($name)
 	{
-		$sql = "select * from " . self::$tablename . "  WHERE doctor='1'  order by created_at desc";
+		$sql = "SELECT * FROM `patients` WHERE name='$name'";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
-	public static function getAll_doc_A($id)
+	public static function getValidatePatientCategory($patient_id, $category_id)
 	{
-		$sql = "SELECT doctor from " . self::$tablename . " WHERE id='$id'";
+		//Valida si un paciente está en cierta clasificación colocada por la clínica.
+		//Por ejemplo buscar si paciente está inactivo para no darle consulta.
+		$sql = "SELECT * FROM " . self::$tablename . " WHERE id=\"$patient_id\" and category_id = \"$category_id\"";
 		$query = Executor::doit($sql);
-		return Model::one($query[0], new PatientData());
-	}
-
-	public static function get_estatus()
-	{
-		$sql = "select * from  tipos_status";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new PatientData());
-	}
-
-	public static function get_registro_paciente($name)
-	{
-		$sql = "SELECT * FROM " . self::$tablename . " WHERE name='$name'";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new PatientData());
-	}
-
-	public static function getAll_todo($id)
-	{
-		$sql = "select " . self::$tablename . ".*,
-		DATE_FORMAT(" . self::$tablename . ".fecha_na,'%d/%m/%Y') as birthday_format,
-		DATE_FORMAT(" . self::$tablename . ".relative_birthday,'%d/%m/%Y') as relative_birthday_format 
-		FROM " . self::$tablename . " WHERE id='$id' AND doctor='0'";
-		$query = Executor::doit($sql);
-		return Model::many($query[0], new PatientData());
+		return Model::one($query[0], new ReservationData());
 	}
 
 	public static function getAllActive()
 	{
-		$sql = "select * from client where last_active_at>=date_sub(NOW(),interval 3 second)";
+		$sql = "SELECT * FROM client WHERE last_active_at>=date_sub(NOW(),interval 3 second)";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
 	public static function getAllUnActive()
 	{
-		$sql = "select * from client where last_active_at<=date_sub(NOW(),interval 3 second)";
+		$sql = "SELECT * FROM client WHERE last_active_at<=date_sub(NOW(),interval 3 second)";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
 	public static function getLike($q)
 	{
-		$sql = "select * from " . self::$tablename . " where title like '%$q%' or email like '%$q%'";
+		$sql = "SELECT * FROM " . self::$tablename . " WHERE title like '%$q%' or email like '%$q%'";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
 
-	/*----------------DONANTES-----------------*/
-
-	public static function getTotalDonantsBySex($sexId)
+	public static function getEmailsByPatientBirthdayMonth($date)
 	{
-		$sql = "SELECT COUNT(id) AS total 
-		FROM " . self::$tablename . " 
-		WHERE donor_id != '' AND sex_id = '$sexId'";
-		$query = Executor::doit($sql);
-		return Model::one($query[0], new PatientData());
-	}
-
-	//Establecer paciente MUJER como donante de óvulos
-	public function updatePatientAsDonant()
-	{
-		$totalDonants = self::getTotalDonantsBySex(1)->total;
-		$donantId = floatval($totalDonants) + 1;
-		$donantId = str_pad($donantId, 3, "0", STR_PAD_LEFT);
-		$sql = "UPDATE " . self::$tablename . " set donor_id = 'OVODON$donantId'  WHERE id = $this->id";
-		Executor::doit($sql);
-	}
-
-	//Establecer paciente HOMBRE como donante de semen
-	public function updateMalePatientAsDonant()
-	{
-		$totalDonants = self::getTotalDonantsBySex(2)->total;
-		$donantId = floatval($totalDonants) + 1;
-		$donantId = str_pad($donantId, 3, "0", STR_PAD_LEFT);
-		$sql = "UPDATE " . self::$tablename . " set donor_id = 'SPERMDON$donantId'  WHERE id = $this->id";
-		Executor::doit($sql);
-	}
-	/*--------------SEXOS---------------- */
-	public static function getAllSexes()
-	{
-		$sql = "SELECT * FROM " . self::$tablenameSexes . "";
+		$sql = "SELECT * FROM " . self::$tablename . " WHERE DATE_FORMAT(birthday,'%m-%d') = '$date' AND email != ''";
 		$query = Executor::doit($sql);
 		return Model::many($query[0], new PatientData());
 	}
-	public static function getSexById($id)
+
+	public static function getByUserId($id)
 	{
-		$sql = "SELECT * FROM " . self::$tablenameSexes . " WHERE id = $id";
+		$sql = "SELECT * FROM " . self::$tablename . " 
+		WHERE user_id = '$id' LIMIT 1";
+		$query = Executor::doit($sql);
+		return Model::one($query[0], new MedicData());
+	}
+
+	/*-----------------FILES-------------------- */
+	public function addFile()
+	{
+		$sql = "INSERT INTO " . self::$tablenameFiles . " (patient_id,reservation_id,path) ";
+		$sql .= "VALUE (\"$this->patient_id\",\"$this->reservation_id\",\"$this->path\")";
+		return Executor::doit($sql);
+	}
+
+	public function deleteFile()
+	{
+		$sql = "DELETE FROM " . self::$tablenameFiles . " WHERE id = $this->id";
+		return Executor::doit($sql);
+	}
+
+	public static function getFileById($id)
+	{
+		$sql = "SELECT * FROM " . self::$tablenameFiles . " WHERE id = '$id'";
 		$query = Executor::doit($sql);
 		return Model::one($query[0], new PatientData());
 	}
+
+	public static function getAllFilesByPatientReservation($patientId, $reservationId)
+	{
+		$sql = "SELECT * FROM " . self::$tablenameFiles . " WHERE patient_id = '$patientId' AND reservation_id = '$reservationId'
+		ORDER BY created_at DESC";
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new PatientData());
+	}
+
+	//-------------CATEGORÍAS----------------
+	public static function getAllCategories()
+	{
+		$sql = "SELECT * FROM " . self::$tablenameCategories . " ";
+		$query = Executor::doit($sql);
+		return Model::many($query[0], new PatientData());
+	}
+
+	public static function getCategoryById($id)
+	{
+		$sql = "SELECT * FROM " . self::$tablenameCategories . " WHERE id ='$id'";
+		$query = Executor::doit($sql);
+		return Model::one($query[0], new PatientData());
+	}
+
+    public static function getFiltered($branchOfficeId, $medicId, $categoryId, $companyId, $search = '') {
+        $conn = Database::getCon();
+
+        // Comienzo de la query
+        $sql  = "SELECT p.*, pc.name AS patient_category_name, pc.color AS patient_category_color
+                  FROM patients p
+                  JOIN patient_categories pc ON p.category_id = pc.id
+                 WHERE 1 = 1";
+
+        // Filtro de sucursal
+        if ($branchOfficeId) {
+            $sql .= " AND p.branch_office_id = " . intval($branchOfficeId);
+        }
+
+        // Filtro de categoría
+        if ($categoryId !== "all" && $categoryId !== "active") {
+            $sql .= " AND p.category_id = " . intval($categoryId);
+        } elseif ($categoryId === "active") {
+            $sql .= " AND (p.category_id = 1 OR p.category_id = 4)";
+        }
+
+        // Filtro de empresa
+        if ($companyId !== "all") {
+            if ($companyId === "company") {
+                $sql .= " AND (p.company_id IS NOT NULL AND p.company_id != 0)";
+            } elseif ($companyId === "withoutCompany") {
+                $sql .= " AND (p.company_id IS NULL OR p.company_id = 0)";
+            } else {
+                $sql .= " AND p.company_id = " . intval($companyId);
+            }
+        }
+
+        // Filtro de psicólogo (último tratamiento)
+        if ($medicId) {
+            $sql .= " AND (
+                        SELECT pt.medic_id
+                          FROM patient_treatments pt
+                         WHERE pt.patient_id = p.id
+                         ORDER BY pt.start_date DESC
+                         LIMIT 1
+                      ) = " . intval($medicId);
+        }
+
+        // Filtro de búsqueda global
+        if ($search !== '') {
+            // escapamos caracteres‑clave para LIKE
+            $s = mysqli_real_escape_string($conn, $search);
+            $sql .= " AND (
+                        p.name        LIKE '%{$s}%'
+                     OR p.cellphone  LIKE '%{$s}%'
+                     OR p.email      LIKE '%{$s}%'
+                     OR p.relative_name LIKE '%{$s}%'
+                      )";
+        }
+
+        // Orden y ejecución
+        $sql .= " ORDER BY p.id DESC";
+        $result = mysqli_query($conn, $sql) or die("Error en getFiltered(): " . mysqli_error($conn));
+
+        // Mapear resultados a objetos Patient
+        $patients = [];
+        while ($row = mysqli_fetch_object($result, 'Patient')) {
+            $patients[] = $row;
+        }
+        return $patients;
+    }
+
 }

@@ -2,6 +2,7 @@
 class PersonData {
 	public static $tablename = "person";
 
+
 	public function __construct(){
 		$this->name = "";
 		$this->lastname = "";

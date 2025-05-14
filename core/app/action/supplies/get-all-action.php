@@ -2,18 +2,19 @@
 $conn = Database::getCon();
 /* Database connection end */
 
+
 // storing  request (ie, get/post) global array to a variable  
 $requestData= $_REQUEST;
 
 $columns = array( 
 // datatable column index  => database column name
 	0 => 'name',
-    1 => 'inventary_min'
+    1 => 'minimum_inventory'
     
 );
 
 // getting total number records without any search
-$sql = "SELECT id,name, inventary_min  FROM product WHERE type='INSUMOS'";
+$sql = "SELECT id,name, minimum_inventory  FROM products WHERE type_id='3' AND is_active = '1'";
 
 $query=mysqli_query($conn, $sql) or die("./?action=supplies: get InventoryItems");
 $totalData = mysqli_num_rows($query);
@@ -22,23 +23,25 @@ $totalFiltered = $totalData;  // when there is no search parameter then total nu
 
 if( !empty($requestData['search']['value']) ) {
 	// if there is a search parameter
-	$sql = "SELECT  id,name, inventary_min ";
-	$sql.=" FROM product";
-	$sql.=" WHERE type='INSUMOS' ";
+	$sql = "SELECT id,name, minimum_inventory ";
+	$sql.=" FROM products";
+	$sql.=" WHERE type_id='3' ";
+	$sql.=" AND is_active = '1' ";
 	$sql.=" AND name LIKE '".$requestData['search']['value']."%' ";    // $requestData['search']['value'] contains search parameter
 	$query=mysqli_query($conn, $sql) or die("./?action=supplies: get PO");
 	$totalFiltered = mysqli_num_rows($query); // when there is a search parameter then we have to modify total number filtered rows as per search result without limit in the query 
 
-	$sql.=" ORDER BY name LIMIT ".$requestData['start']." ,".$requestData['length']."   "; // $requestData['order'][0]['column'] contains colmun index, $requestData['order'][0]['dir'] contains order such as asc/desc , $requestData['start'] contains start row number ,$requestData['length'] contains limit length.
-	$query=mysqli_query($conn, $sql) or die("./?action=supplies/get-all: get PO"); // again run query with limit
+	$sql.=" ORDER BY ". $columns[$requestData['order'][0]['column']]."   ".$requestData['order'][0]['dir']."   LIMIT ".$requestData['start']." ,".$requestData['length']."   "; // $requestData['order'][0]['column'] contains colmun index, $requestData['order'][0]['dir'] contains order such as asc/desc , $requestData['start'] contains start row number ,$requestData['length'] contains limit length.
+	$query=mysqli_query($conn, $sql) or die("./?action=supplies: get PO"); // again run query with limit
 	
 } else {	
 
-	$sql = "SELECT id,name, inventary_min  ";
-	$sql.=" FROM product";
-	$sql.=" WHERE type='INSUMOS' ";
-	$sql.=" ORDER BY name LIMIT ".$requestData['start']." ,".$requestData['length']."   ";
-	$query=mysqli_query($conn, $sql) or die("./?action=supplies/get-all: get PO");
+	$sql = "SELECT id,name, minimum_inventory  ";
+	$sql.=" FROM products";
+	$sql.=" WHERE type_id='3' ";
+	$sql.=" AND is_active = '1' ";
+	$sql.=" ORDER BY ". $columns[$requestData['order'][0]['column']]."   ".$requestData['order'][0]['dir']."   LIMIT ".$requestData['start']." ,".$requestData['length']."   ";
+	$query=mysqli_query($conn, $sql) or die("./?action=supplies: get PO");
 	
 }
 
@@ -47,11 +50,12 @@ while( $row=mysqli_fetch_array($query) ) {  // preparing an array
 	$nestedData=array(); 
 
 	$nestedData[] = $row["name"];
-	$nestedData[] = $row["inventary_min"];
+	$nestedData[] = $row["minimum_inventory"];
    
     $nestedData[] =  '<td >
 			   <a href="index.php?view=supplies/edit&id='.$row["id"].'" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil"></i></a>
-		       <a href="index.php?view=supplies/delete&id='.$row["id"].'" class="btn btn-xs btn-danger" onClick="return confirmDelete()"><i class="fa fa-trash"></i></a>
+			   <a href="index.php?action=supplies/deactivate&id='.$row["id"].'" class="btn btn-xs btn-danger" onclick="return confirmar()"><i class="fas fa-trash"></i></a>
+		       <!--<a href="index.php?action=supplies/delete&id='.$row["id"].'" class="btn btn-xs btn-danger" onclick="return confirmar()"><i class="fas fa-trash"></i></a>-->
 				     </td>';	
     
 	$data[] = $nestedData;

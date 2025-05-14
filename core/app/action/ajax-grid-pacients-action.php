@@ -23,7 +23,7 @@ $columns = array(
 // getting total number records without any search
 $sql = "SELECT id, name, calle, tel, email, ref,status ";
 $sql.=" FROM pacient";
-$query=mysqli_query($conn, $sql) or die("./?action=pacients: get InventoryItems");
+$query=mysqli_query($conn, $sql) or die("./?action=patients: get InventoryItems");
 $totalData = mysqli_num_rows($query);
 $totalFiltered = $totalData;  // when there is no search parameter then total number rows = total number filtered rows.
 
@@ -35,18 +35,18 @@ if( !empty($requestData['search']['value']) ) {
 	$sql.=" WHERE name LIKE '".$requestData['search']['value']."%' ";    // $requestData['search']['value'] contains search parameter
 	$sql.=" OR tel LIKE '".$requestData['search']['value']."%' ";
 	$sql.=" OR email LIKE '".$requestData['search']['value']."%' ";
-    $query=mysqli_query($conn, $sql) or die("./?action=pacients: get PO");
+    $query=mysqli_query($conn, $sql) or die("./?action=patients: get PO");
 	$totalFiltered = mysqli_num_rows($query); // when there is a search parameter then we have to modify total number filtered rows as per search result without limit in the query 
 
 	$sql.=" ORDER BY ". $columns[$requestData['order'][0]['column']]."   ".$requestData['order'][0]['dir']."   LIMIT ".$requestData['start']." ,".$requestData['length']."   "; // $requestData['order'][0]['column'] contains colmun index, $requestData['order'][0]['dir'] contains order such as asc/desc , $requestData['start'] contains start row number ,$requestData['length'] contains limit length.
-	$query=mysqli_query($conn, $sql) or die("./?action=pacients: get PO"); // again run query with limit
+	$query=mysqli_query($conn, $sql) or die("./?action=patients: get PO"); // again run query with limit
 	
 } else {	
 
 	$sql = "SELECT id, name, calle, tel, email, ref,status  ";
 	$sql.=" FROM pacient";
 	$sql.=" ORDER BY ". $columns[$requestData['order'][0]['column']]."   ".$requestData['order'][0]['dir']."   LIMIT ".$requestData['start']." ,".$requestData['length']."   ";
-	$query=mysqli_query($conn, $sql) or die("./?action=pacients: get PO");
+	$query=mysqli_query($conn, $sql) or die("./?action=patients: get PO");
 	
 }
 

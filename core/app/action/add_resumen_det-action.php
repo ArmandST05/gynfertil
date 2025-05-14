@@ -12,7 +12,7 @@
 	$user->add_resumen();
 
 //Core::alert("Agregado exitosamente!");
-print "<script>window.location='index.php?view=patients/index';</script>";
+print "<script>window.location='index.php?view=patients';</script>";
 
 
 

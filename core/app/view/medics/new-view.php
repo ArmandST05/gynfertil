@@ -1,51 +1,95 @@
-    <?php
-    $categories = CategoryMedicData::getAll();
-    $medicTypes = MedicTypeData::getAll();
-    $users = UserData::getAll();
-    ?>
-    <div class="row">
-      <div class="col-md-12">
-        <h1>Agregar Personal Médico</h1>
-        <br>
-        <form class="form-horizontal" method="post" enctype="multipart/form-data" action="index.php?view=medics/add" role="form">
+<?php
+$categories = CategoryMedicData::getAll();
+$users = UserData::getUnassigned();
+$branchOffices = BranchOfficeData::getAllByStatus(1);
+$educationLevels = EducationLevelData::getAll();
+?>
+<div class="row">
+  <div class="col-md-12">
+    <h1>Agregar Psicólogo</h1>
+    <br>
+    <div class="box box-primary">
+      <div class="box-body">
+        <form class="form-horizontal" method="post" enctype="multipart/form-data" action="index.php?action=medics/add" role="form">
           <div class="form-group">
-            <label for="inputEmail1" class="col-lg-2 control-label">Especialidad*</label>
+            <label for="inputEmail1" class="col-lg-2 control-label">Área*</label>
             <div class="col-md-6">
-              <select name="categoryId" class="form-control" required>
-                <option value="">-- SELECCIONE --</option>
+              <select name="category_id" class="form-control" required>
                 <?php foreach ($categories as $category) : ?>
                   <option value="<?php echo $category->id; ?>"><?php echo $category->name; ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
           </div>
+
           <div class="form-group">
-            <label for="inputEmail1" class="col-lg-2 control-label">Tipo*</label>
+            <label for="inputEmail1" class="col-lg-2 control-label">Sucursal*</label>
             <div class="col-md-6">
-              <select name="typeId" class="form-control" required>
+              <select name="branch_office_id" class="form-control" required>
                 <option value="">-- SELECCIONE --</option>
-                <?php foreach ($medicTypes as $type) : ?>
-                  <option value="<?php echo $type->id; ?>"><?php echo $type->name; ?></option>
+                <?php foreach ($branchOffices as $branchOffice) : ?>
+                  <option value="<?php echo $branchOffice->id; ?>"><?php echo $branchOffice->name; ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
           </div>
+
           <div class="form-group">
             <label for="inputEmail1" class="col-lg-2 control-label">Nombre*</label>
             <div class="col-md-6">
               <input type="text" name="name" class="form-control" id="name" placeholder="Nombre" required>
             </div>
           </div>
+
           <div class="form-group">
-            <label for="inputEmail1" class="col-lg-2 control-label">Título de especialidad (aparecerá en los reportes)</label>
+            <label for="inputEmail1" class="col-lg-2 control-label">Grado de Estudios*</label>
             <div class="col-md-6">
-              <input type="text" name="specialty_title" class="form-control" id="specialty_title" placeholder="Título de especialidad">
+              <select name="educationLevel" class="form-control" required>
+                <option value="">-- SELECCIONE --</option>
+                <?php foreach ($educationLevels as $educationLevel) : ?>
+                  <option value="<?php echo $educationLevel->id; ?>"><?php echo $educationLevel->name; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Cédula Profesional*</label>
+            <div class="col-md-6">
+              <input type="text" name="professional_license" class="form-control" id="professional_license" placeholder="Cédula Profesional">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Centro de Estudios*</label>
+            <div class="col-md-6">
+              <input type="text" name="study_center" class="form-control" id="study_center" placeholder="Centro de Estudios">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Correo Electrónico</label>
+            <div class="col-md-6">
+              <input type="text" name="email" class="form-control" id="email" placeholder="Correo Electrónico">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Teléfono</label>
+            <div class="col-md-6">
+              <input type="text" name="phone" class="form-control" id="phone" placeholder="Teléfono">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Dirección</label>
+            <div class="col-md-6">
+              <input type="text" name="address" class="form-control" id="address" placeholder="Dirección">
             </div>
           </div>
           <div class="form-group">
             <label for="inputEmail1" class="col-lg-2 control-label">Usuario</label>
             <div class="col-md-6">
-              <select name="userId" class="form-control">
+              <select name="user_id" class="form-control">
                 <option value="">-- SELECCIONE --</option>
                 <?php foreach ($users as $user) : ?>
                   <option value="<?php echo $user->id; ?>"><?php echo $user->name; ?></option>
@@ -53,36 +97,23 @@
               </select>
             </div>
           </div>
+
           <div class="form-group">
-            <label for="inputEmail1" class="col-lg-2 control-label"></label>
-            <div class="col-lg-6">
-              <div class="checkbox">
-                <label>
-                  <input type="checkbox" id="isDigitalSignature" name="isDigitalSignature" value="1" onclick="selectedDigitalSignature()">
-                  Utilizar firma digital.
-                </label>
-              </div>
-            </div>
-          </div>
-          <div class="form-group divDigitalSignature" style="display: none;">
-            <label for="inputEmail1" class="col-lg-2 control-label">Firma Digital (.PNG sin fondo)</label>
+            <label for="inputEmail1" class="col-lg-2 control-label">Color en Calendario*</label>
             <div class="col-md-6">
-              <input type="file" name="digitalSignature" class="form-control">
+              <input id="color" name="calendar_color" type="color" value="#ff0000" required>
             </div>
           </div>
+
           <div class="form-group">
-            <div class="col-lg-offset-2 col-lg-10">
-              <button type="submit" class="btn btn-primary">Agregar Medico</button>
+            <div class="col-lg-6 pull-right">
+              <button type="submit" class="btn btn-primary">Agregar Psicólogo</button>
             </div>
           </div>
         </form>
       </div>
     </div>
-    </div>
-    </div>
-    <script>
-      function selectedDigitalSignature() {
-        if ($("#isDigitalSignature").is(':checked')) $(".divDigitalSignature").show();
-        else $(".divDigitalSignature").hide();
-      }
-    </script>
+  </div>
+</div>
+</div>
+</div>

@@ -1,304 +1,246 @@
 <?php
-$user = isset($_SESSION["user_id"])  ? $_SESSION["user_id"] : null;
-$tipo = "";
-$users = UserData::get_tipo_usuario($user);
-foreach ($users as $key) {
-  $tipo = $key->tipo_usuario;
-}
-
-if ($tipo == "su" || $tipo == "sub") {
-  $paymentTypes = ProductData::getTypePay();
-} else {
-  $paymentTypes = ProductData::getTypePayeX();
-}
-$sale = SellData::getById($_GET["id"]);
-$patient = PatientData::getById($sale->idPac);
-$det = CategorySpend::getByIdCatBuyId($_GET["id"]);
-$payments = ProductData::getTypeSellId($_GET["id"]);
-$com = CategorySpend::getComen($_GET["id"]);
-$pro = ProductData::getLikeSell();
+$paymentTypes = PaymentTypeData::getAll();
+$sale = OperationData::getById($_GET["id"]);
+$patient = PatientData::getById($sale->patient_id);
+$details = OperationDetailData::getAllByOperationId($_GET["id"]);
+$paymentDetails = OperationPaymentData::getByOperationId($_GET["id"]);
+$products = array_merge(ProductData::getAllByTypeId(3), ProductData::getAllByTypeId(4), ProductData::getAllByTypeId(1)); //Insumos,Medicamentos y conceptos ingresos para venta
 $total = 0;
-$totalPayments = 0;
-$bankAccounts = BankAccountData::getAllByStatus(1);
+$totalPay = 0;
+
+$patientTreatment = TreatmentData::getPatientActualTreatment($sale->patient_id);
+$patientTreatmentId = (isset($patientTreatment)) ? $patientTreatment->id : null;
+$treatmentName = null;
+$treatmentDefaultPrice = null;
+if ($patientTreatmentId) {
+  $treatmentName = $patientTreatment->treatment_name;
+  $treatmentDefaultPrice = $patientTreatment->default_price;
+}
+if($sale->reservation_id){
+  $reservationData = ReservationData::getById($sale->reservation_id);
+}
 ?>
-<script src="assets/jquery-2.1.1.min.js" type="text/javascript"></script>
-<link href="assets/select2.min.css" rel="stylesheet" />
-<script src="assets/select2.min.js"></script>
-<script type="text/javascript">
-  function seleccion(valor) {
-    $.ajax({
-      type: "POST",
-      url: "./?action=getPrecioSell",
-      data: "valor=" + valor,
-
-      error: function() {
-        alert("error petición ajax");
-      },
-      success: function(data) {
-
-        $("#price").val(data);
-
-      }
-    });
-  }
-</script>
 <div class="row">
   <div class="col-md-12">
-    <h1>Ventas</h1>
+    <h1>Editar venta</h1>
   </div>
+  <?php if($reservationData):?>
   <div class="row">
-    <div class="col-lg-9">
-      <label for="inputEmail1" class="col-lg-3 control-label">Cliente</label>
-      <input type="text" class="form-control" value="<?php echo $patient->name ?>" readonly>
+    <div class="form-group">
+      <div class="col-lg-4">
+        <label class="control-label">Fecha de cita a cobrar:</label>
+        <input type="text" class="form-control" value="<?php echo $reservationData->date_format ?>" readonly>
+      </div>
     </div>
   </div>
-  <form method="post" action="index.php?view=addsellupd" autocomplete="off">
-    <div class="row">
-      <div class="col-lg-12">
-        <div class="form-group">
-          <div class="col-lg-3">
-            <label for="inputEmail1" class="col-lg-3 control-label">Medicamento/Conceptos</label>
-            <select name="product_id" id="product_id" class="form-control" onchange="seleccion(this.value)" autofocus required>
-              <option value="0">-- SELECCIONE --</option>
-              <?php foreach ($pro as $p) : ?>
-                <option value="<?php echo $p->id; ?>"><?php echo $p->id . " - " . $p->name ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="col-lg-3">
-            <label for="inputEmail1" class="col-lg-3 control-label">Costo</label>
-            <input type="text" class="form-control" autofocus name="price" id="price" required placeholder="Costo ...">
-          </div>
-
-          <div class="col-lg-2">
-            <label for="inputEmail1" class="col-lg-3 control-label">Cantidad</label>
-            <input type="number" class="form-control" value="1" autofocus name="q" placeholder="Cantidad" required>
-          </div>
-          <div class="col-lg-2">
-            <br>
-            <button type="submit" class="btn btn-primary">Agregar</button>
-          </div>
-          <input type="hidden" id="idSell" name="idSell" value="<?php echo $_GET["id"] ?>" class="form-control" autocomplete='off'>
-        </div>
+  <?php endif;?>
+  <div class="row">
+    <div class="form-group">
+      <div class="col-lg-4">
+        <label class="control-label">Cliente:</label>
+        <input type="text" class="form-control" autofocus name="cliente" id="cliente" required placeholder="Cliente" value="<?php echo $patient->name ?>" readonly>
       </div>
+      <div class="col-lg-2">
+        <label class="control-label">Tratamiento actual:</label>
+        <input type="text" class="form-control" autofocus name="treatmentName" id="treatmentName" required placeholder="Tratamiento actual" value="<?php echo $treatmentName ?>" readonly>
+      </div>
+      <div class="col-lg-2">
+        <label class="control-label">Precio predeterminado:</label>
+        <input type="text" class="form-control" autofocus name="defaultPrice" id="defaultPrice" required placeholder="Precio predeterminado" value="<?php echo $treatmentDefaultPrice ?>" readonly>
+      </div>
+    </div>
+  </div>
+  <form method="post" action="index.php?action=sales/add-product" autocomplete="off">
+    <div class="form-group">
+      <div class="col-lg-3">
+        <label for="inputEmail1" class="col-lg-3 control-label">Productos/Conceptos</label>
+        <select name="productId" id="productId" class="form-control" onchange="selectProduct(this.value)" autofocus required>
+          <option value="0">-- SELECCIONE --</option>
+          <?php foreach ($products as $product) : ?>
+            <option value="<?php echo $product->id; ?>"><?php echo $product->id . " - " . $product->name ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-lg-3">
+        <label for="inputEmail1" class="col-lg-3 control-label">Costo</label>
+        <input type="text" class="form-control" autofocus name="price" id="price" required placeholder="Costo ...">
+      </div>
+      <div class="col-lg-2">
+        <label for="inputEmail1" class="col-lg-3 control-label">Cantidad</label>
+        <input type="number" class="form-control" value="1" autofocus name="quantity" placeholder="Cantidad" required>
+      </div>
+      <div class="col-lg-2">
+        <br>
+        <button type="submit" class="btn btn-primary">Agregar</button>
+      </div>
+      <input type="hidden" id="saleId" name="saleId" value="<?php echo $_GET["id"] ?>" class="form-control" autocomplete='off'>
     </div>
   </form>
-  <div class="row">
-    <div class="col-lg-12">
-      <table class="table table-bordered table-hover">
-        <thead>
-          <th style="width:30px;">ID</th>
-          <th style="width:250px;">Concepto</th>
-          <th style="width:30px;">Costo</th>
-          <th style="width:30px;">Cantidad</th>
-          <th style="width:30px;">Total</th>
-          <th></th>
-        </thead>
-        <?php foreach ($det as $c) :
-          $concept = CategorySpend::getByIdCatSell($c->product_id);
-        ?>
-          <tr>
-            <td><?php echo $c->product_id; ?></td>
-            <td><?php echo $concept->name; ?></td>
-            <td><b>$ <?php echo number_format($c->price, 2); ?></b></td>
-            <td><?php echo $c->q; ?></td>
-            <td><b>$ <?php echo number_format($c->price * $c->q, 2); ?></b></td>
-            <?php $pt = $c->price * $c->q;
-            $total += $pt; ?>
-            <td style="width:30px;"><a href="index.php?view=delConSell&idSell=<?php echo $_GET["id"] . "&idCon=" . $c->id; ?>" class="btn btn-danger btn-sm"><i class="glyphicon glyphicon-remove"></i> Cancelar</a></td>
-          </tr>
+  <table class="table table-bordered table-hover">
+    <thead>
+      <th style="width:30px;">ID</th>
+      <th style="width:250px;">Concepto</th>
+      <th style="width:30px;">Costo</th>
+      <th style="width:30px;">Cantidad</th>
+      <th style="width:30px;">Total</th>
+      <th></th>
+    </thead>
+    <tbody>
+      <?php foreach ($details as $detail) :
+        $concept = ProductData::getById($detail->product_id);
+      ?>
+        <tr>
+          <td><?php echo $detail->product_id; ?></td>
+          <td><?php echo $concept->name; ?></td>
+          <td><b>$<?php echo number_format($detail->price, 2); ?></b></td>
+          <td><?php echo $detail->quantity; ?></td>
+          <td><b>$<?php echo number_format($detail->price * $detail->quantity, 2); ?></b></td>
+          <?php $pt = $detail->price * $detail->quantity;
+          $total += $pt;
+          ?>
+          <td style="width:30px;"><a href="index.php?action=sales/delete-product&saleId=<?php echo $_GET["id"] . "&productId=" . $detail->id; ?>" class="btn btn-sm btn-danger"><i class="glyphicon glyphicon-remove"></i> Cancelar</a></td>
+        </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
 
-        <?php endforeach; ?>
-      </table>
-    </div>
-  </div>
-  <h3>Resumen</h3>
-  <div class="row">
-    <label for="inputEmail1" class="col-lg-2 control-label">Nuevo Pago:</label>
-  </div>
-  <div class="row">
-    <form method="POST" action="index.php?action=sales/add-payment" autocomplete="off">
-      <div class="form-group">
-        <div class="col-lg-2">
-          <select name="idTypePay" id="paymentTypeId" class="form-control" required>
-            <option value="">-- TIPO PAGO --</option>
-            <?php foreach ($paymentTypes as $paymentType) : ?>
-              <option value="<?php echo $paymentType->id; ?>"><?php echo $paymentType->id . ": " . $paymentType->name; ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="col-lg-3" id="divAccountId">
-          <select name="bankAccountId" class="form-control">
-            <option value="">-- NO. CUENTA --</option>
-            <?php foreach ($bankAccounts as $bankAccount) : ?>
-              <option value="<?php echo $bankAccount->id; ?>"><?php echo $bankAccount->name; ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="col-lg-2" id="divIsInvoice">
-          <div class="radio">
-            <label>
-              <input type="radio" name="isInvoice" id="isInvoiceTrue" value="1">
-              SÍ facturar
-            </label>
-          </div>
-          <div class="radio">
-            <label>
-              <input type="radio" name="isInvoice" id="isInvoiceFalse" value="0" checked>
-              NO facturar
-            </label>
-          </div>
-        </div>
-        <div class="col-lg-2">
-          <input type="number" name="money" required class="form-control" id="money" placeholder="Total">
-        </div>
-        <div class="col-lg-2">
-          <input type="date" name="date" required class="form-control" id="date" placeholder="Fecha">
-        </div>
-        <div class="col-md-2">
-          <button type="submit" class="btn btn-primary"><i class=""></i> Agregar</button>
-        </div>
+  <h2>Resumen</h2>
+  <form method="post" action="index.php?action=sales/add-payment" autocomplete="off">
+    <div class="form-group">
+      <label for="inputEmail1" class="col-lg-2 control-label">Forma de pago</label>
+      <div class="col-lg-3">
+        <select name="paymentType" class="form-control" required>
+          <option value="">-- SELECCIONE --</option>
+          <?php foreach ($paymentTypes as $paymentType) : ?>
+            <option value="<?php echo $paymentType->id; ?>"><?php echo $paymentType->name; ?></option>
+          <?php endforeach; ?>
+        </select>
       </div>
-      <input type="hidden" id="idSell" name="idSell" value="<?php echo $_GET["id"] ?>" class="form-control" autocomplete='off'>
-      <input type="hidden" name="total1" value="<?php echo $total; ?>" class="form-control" placeholder="Total">
-      <input type="hidden" id="totalGen2" name="totalGen2" value="<?php echo $totalPayments ?>" class="form-control">
-    </form>
-  </div>
-  <br>
+      <div class="col-lg-2">
+        <input type="number" name="total" required class="form-control" id="total" placeholder="Total" required>
+      </div>
+      <div class="col-lg-2">
+        <input type="date" name="date" required class="form-control" id="date" placeholder="Fecha" required>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary"><i class=""></i> Agregar</button>
+      </div>
+    </div>
+    <input type="hidden" id="saleId" name="saleId" value="<?php echo $_GET["id"] ?>" class="form-control" autocomplete='off'>
+    <input type="hidden" name="totalSale" value="<?php echo $total; ?>" class="form-control" placeholder="Total">
+    <input type="hidden" name="totalPayment" value="<?php echo $totalPay ?>" class="form-control">
+  </form>
   <div class="row">
     <div class="col-md-6">
       <table class="table table-bordered table-hover">
         <thead>
-          <th>Id</th>
+          <th>ID</th>
           <th>Forma de pago</th>
           <th>Total</th>
-          <th>No. cuenta</th>
-          <th>Factura</th>
-          <th>Acciones</th>
+          <th></th>
         </thead>
-        <?php foreach ($payments as $payment) :
-          $paymentTypeData = ProductData::getByIdTypePay($payment->idTypePay);
-          $bankAccount = BankAccountData::getById($payment->bank_account_id);
-          $totalPayments += $payment->cash;
-        ?>
-          <tr>
-            <td><?php echo $payment->idTypePay; ?></td>
-            <td><?php echo  $paymentTypeData->name; ?></td>
-            <td><b>$<?php echo number_format($payment->cash, 2); ?></b></td>
-            <td><?php echo ($bankAccount) ? $bankAccount->name : "NO APLICA" ?></td>
-            <td>
-              <?php if ($payment->is_invoice == 1) : ?>
-                <button type="button" class="btn btn-xs btn-success" onclick="changeIsInvoicePayment(`<?php echo $payment->id ?>`,0)">SÍ FACTURAR</button>
-              <?php else : ?>
-                <button type="button" class="btn btn-xs btn-danger" onclick="changeIsInvoicePayment(`<?php echo $payment->id ?>`,1)">NO FACTURAR</button>
-              <?php endif; ?>
-            </td>
-            <td style="width:25px;"><a href="index.php?action=sales/delete-payment&idSell=<?php echo $_GET["id"] . "&idP=" . $payment->id . "&total1=" . $total . "&totalGen2=" . $totalPayments; ?>" class="btn btn-danger btn-sm"><i class="glyphicon glyphicon-remove"></i></a></td>
-          </tr>
-        <?php endforeach; ?>
+        <tbody>
+          <?php foreach ($paymentDetails as $paymentDetail) :
+            $paymentData = PaymentTypeData::getById($paymentDetail->payment_type_id);
+          ?>
+            <tr>
+              <td><?php echo $paymentDetail->id; ?></td>
+              <td><?php echo  $paymentData->name; ?></td>
+              <td><b>$ <?php $tp = $paymentDetail->total;
+                        $totalPay += $tp;
+                        echo number_format($tp, 2); ?></b></td>
+              <td style="width:25px;"><a href="index.php?action=sales/delete-payment&saleId=<?php echo $_GET["id"] . "&paymentId=" . $paymentDetail->id . "&totalSale=" . $total . "&totalPayment=" . $totalPay; ?>" class="btn btn-sm btn-danger"><i class="glyphicon glyphicon-remove"></i></a></td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
       </table>
+      <?php if ($totalPay > 0) : ?>
+        <div class="col-lg-4 col-md-offset-6">
+          <input style="text-align:right;" type="text" id="totalGen1" name="totalGen1" value="<?php echo number_format($totalPay, 2) ?>" class="form-control">
+        <?php endif; ?>
+        </div>
     </div>
-  </div>
-  <div class="row">
     <div class="col-md-6">
       <table class="table table-bordered">
         <tr>
-          <td><b>Total Venta:</b></td>
-          <td><b>$ <?php echo number_format($total, 2); ?></b></td>
-          <td><b>Pagado:<b></td>
-          <td><b>$<?php echo number_format($totalPayments, 2) ?></b></td>
-          <td><b>Saldo:</b></td>
-          <td><b>$<?php echo ((floatval($total - $totalPayments)) < 0) ? "0.00" : number_format($total - $totalPayments, 2); ?></b></td>
+          <td>
+            <p>Total</p>
+          </td>
+          <td>
+            <p><b>$ <?php echo number_format($total, 2); ?></b></p>
+          </td>
         </tr>
       </table>
     </div>
   </div>
-  <div class="row">
-    <div class="col-lg-12">
-      <form method="POST" class="form-horizontal" id="processsellupt" action="index.php?view=processsellupt">
-        <div class="form-group">
-          <div class="col-lg-offset-2 col-lg-10">
-            <div class="checkbox">
-              <label>
-                <input name="is_oficial" type="hidden" value="1">
-              </label>
-            </div>
-          </div>
+
+  <form method="post" class="form-horizontal" id="formUpdateSale" action="index.php?action=sales/update">
+    <div class="form-group">
+      <div class="col-lg-offset-2 col-lg-10">
+        <div class="checkbox">
+          <label>
+            <input name="is_oficial" type="hidden" value="1">
+          </label>
         </div>
-        <div class="form-group">
-          <div class="col-lg-10">
-            <textarea class="form-control" name="note" rows="10" cols="50" placeholder="Comentarios"><?php echo $com->comentarios ?></textarea>
-          </div>
-          <div class="col-lg-offset-8 col-lg-10">
-            <div class="checkbox">
-              <label>
-                <button class="btn btn-primary"><i class="glyphicon glyphicon-usd"></i> Finalizar Venta</button>
-              </label>
-              <input type="hidden" name="total" value="<?php echo $total ?>" class="form-control" placeholder="Total">
-              <input type="hidden" id="totalGen" name="totalGen" value="<?php echo $totalPayments ?>" class="form-control">
-              <input type="hidden" id="discount" name="discount" value="0" class="form-control">
-            </div>
-            <input type="hidden" id="idSell" name="idSell" value="<?php echo $_GET["id"] ?>" class="form-control" autocomplete='off'>
-          </div>
-        </div>
-      </form>
+      </div>
     </div>
-  </div>
+    <div class="form-group">
+      <div class="col-lg-10">
+        <textarea class="form-control" name="description" rows="10" cols="50" placeholder="Comentarios"><?php echo $sale->description ?></textarea>
+      </div>
+      <div class="col-lg-offset-8 col-lg-10">
+        <div class="checkbox">
+          <label>
+            <button class="btn btn-primary"><i class="glyphicon glyphicon-usd"></i><i class="glyphicon glyphicon-usd"></i> Finalizar</button>
+          </label>
+          <input type="hidden" id="totalSale" name="totalSale" value="<?php echo $total ?>" class="form-control" placeholder="Total">
+          <input type="hidden" id="totalPayment" name="totalPayment" value="<?php echo $totalPay ?>" class="form-control">
+          <input type="hidden" id="discount" name="discount" value="0" class="form-control">
+          <input type="hidden" id="saleId" name="saleId" value="<?php echo $_GET["id"] ?>" class="form-control" autocomplete='off'>
+        </div>
+      </div>
+    </div>
+  </form>
   <script>
     $(document).ready(function() {
-      $("#product_id").select2({});
-      $("#divAccountId").hide();
-      $("#divIsInvoice").hide();
+      $("#productId").select2({});
     });
 
-    $("#processsellupt").submit(function(e) {
-      money = $("#totalGen").val();
-      total = $("#total").val();
-      money = $("#total").val();
-      totalGen = $("#totalGen").val();
-      if (money > (<?php echo $total; ?> - discount)) {
+    $("#formUpdateSale").submit(function(e) {
+      totalPayment = $("#totalPayment").val();
+      if ($("#totalSale").val() <= 0) {
+        alert("Ingresa productos a tu venta");
+        e.preventDefault();
+      } else if (totalPayment > (<?php echo $total; ?> - discount)) {
         alert("No se puede efectuar la operacion verifica tus cantidades");
         e.preventDefault();
       } else {
         if (discount == "") {
           discount = 0;
         }
-        /************Valida liquidado *************/
-        if (totalGen >= (<?php echo $total; ?>)) {
-          go = confirm("Cambio: $" + (totalGen - (<?php echo $total; ?>)) + " Pesos");
+        /************Validar si se liquidó *************/
+        if (totalPayment >= (<?php echo $total; ?>)) {
+          go = confirm("Cambio: $" + (totalPayment - (<?php echo $total; ?>)) + " Pesos");
         } else {
-          go = confirm("Pendiente por pagar: $" + ((<?php echo $total; ?>) - totalGen) + " Pesos");
-
+          go = confirm("Pendiente por pagar: $" + ((<?php echo $total; ?>) - totalPayment) + " Pesos");
         }
-
         if (go) {} else {
           e.preventDefault();
         }
       }
     });
 
-    $("#paymentTypeId").change(function() {
-      $("#isInvoiceFalse").prop("checked", true);
-      $("#bankAccountId").val("");
-      if ($(this).val() == 2 || $(this).val() == 3 || $(this).val() == 10) { //Débito 4-Crédito 5- Transferencia 10
-        $("#divAccountId").show();
-        $("#divIsInvoice").show();
-      } else {
-        $("#divAccountId").hide();
-        $("#divIsInvoice").hide();
-      }
-    });
-
-    function changeIsInvoicePayment(paymentId, isInvoice) {
+    function selectProduct(id) {
       $.ajax({
         type: "POST",
-        url: "./?action=sales/update-payment-invoice",
-        data: {
-          "paymentId": paymentId,
-          "isInvoice": isInvoice
+        url: "./?action=products/get-price-in",
+        data: "id=" + id,
+
+        error: function() {
+          alert("Error al consultar el precio del concepto.");
         },
-        complete: function(data) {
-          window.location.reload();
+        success: function(data) {
+          $("#price").val(data);
         }
       });
     }

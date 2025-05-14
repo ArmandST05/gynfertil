@@ -1,62 +1,43 @@
 <?php
 class OperationTypeData {
-	public static $tablename = "operation_type";
+	public static $tablename = "operation_types";
 
-	public $id;
-	public $name;
-	
 	public function __construct(){
 		$this->name = "";
 	}
 
 	public function add(){
-		$sql = "insert into ".self::$tablename." (name) ";
+		$sql = "INSERT INTO ".self::$tablename." (name) ";
 		$sql .= "value (\"$this->name\")";
 		Executor::doit($sql);
 	}
 
 	public static function delById($id){
-		$sql = "delete from ".self::$tablename." where id=$id";
+		$sql = "DELETE FROM ".self::$tablename." WHERE id=$id";
 		Executor::doit($sql);
 	}
 
 	public function del(){
-		$sql = "delete from ".self::$tablename." where id=$this->id";
+		$sql = "DELETE FROM ".self::$tablename." WHERE id=$this->id";
 		Executor::doit($sql);
 	}
 
-
-	public static function getById($id){
-		 $sql = "select * from ".self::$tablename." where id=$id";
+	public static function getById($id)
+	{
+		$sql = "SELECT * FROM " . self::$tablename . " WHERE id = $id";
 		$query = Executor::doit($sql);
-		$found = null;
-		$data = new OperationTypeData();
-		while($r = $query[0]->fetch_array()){
-			$data->id = $r['id'];
-			$data->name = $r['name'];
-			$found = $data;
-			break;
-		}
-		return $found;
+		return Model::one($query[0], new OperationDetailData());
 	}
 
-	public static function getByName($name){
-		 $sql = "select * from ".self::$tablename." where name=\"$name\"";
+	public static function getByName($name)
+	{
+		$sql = "SELECT * FROM ".self::$tablename." WHERE name=\"$name\"";
 		$query = Executor::doit($sql);
-		$found = null;
-		$data = new OperationTypeData();
-		while($r = $query[0]->fetch_array()){
-			$data->id = $r['id'];
-			$data->name = $r['name'];
-			$found = $data;
-			break;
-		}
-		return $found;
+		return Model::one($query[0], new OperationDetailData());
 	}
-
 
 	public static function getAll(){
-		$sql = "select * from ".self::$tablename." order by created_at desc";
+		$sql = "SELECT * FROM ".self::$tablename." order by created_at desc";
 		$query = Executor::doit($sql);
 		$array = array();
 		$cnt = 0;

@@ -1,19 +1,20 @@
 <?php
-$payment = new OperationData();
-$payment->delPayB($_GET["idP"]);
+$payment = OperationPaymentData::getById($_GET["paymentId"]);
+$payment->delete();
 
-$tot=$_GET["total1"];
-$totalGen=$_GET["totalGen2"];
-      
-$liq=$tot - $totalGen;
+$totalSale = $_GET["totalSale"];
+$totalPayment = $_GET["totalPayment"];
 
-if($liq<=0){
-$status = 1;
-}else{
-$status = 0;
+$isLiquidated = $totalSale - $totalPayment;
+
+if ($isLiquidated <= 0) $statusId = 1;
+else $statusId = 0;
+
+OperationDetailData::updateTotalStatus($_GET["saleId"], $_GET["totalSale"], $statusId);
+$sale = OperationData::getById($_GET["saleId"]);
+//Actualizar la cita vinculada a la venta para que muestre el último estatus de la venta en el calendario
+if($sale->reservation_id != 0){
+    ReservationData::updateLastSaleStatus($sale->reservation_id);
 }
-  $op2 = new OperationData();
-  $upt = $op2->updatedateFac1($_GET["idSell"],$_GET["total1"],$status);
 
-Core::redir("./index.php?view=sales/edit&id=".$_GET["idSell"]."");
-?>
+Core::redir("./index.php?view=sales/edit&id=" . $_GET["saleId"] . "");

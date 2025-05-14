@@ -1,9 +1,12 @@
 <?php
-$conn = Database::getCon();
+include('../conn.php');
 /* Database connection end */
+
 
 // storing  request (ie, get/post) global array to a variable  
 $requestData= $_REQUEST;
+
+
 
 $columns = array( 
 // datatable column index  => database column name
@@ -42,7 +45,7 @@ if( !empty($requestData['search']['value']) ) {
 	$query=mysqli_query($conn, $sql) or die("./?action=getSellC: get PO");
 	$totalFiltered = mysqli_num_rows($query); // when there is a search parameter then we have to modify total number filtered rows as per search result without limit in the query 
 
-	$sql.=" ORDER BY id LIMIT ".$requestData['start']." ,".$requestData['length']."   "; // $requestData['order'][0]['column'] contains colmun index, $requestData['order'][0]['dir'] contains order such as asc/desc , $requestData['start'] contains start row number ,$requestData['length'] contains limit length.
+	$sql.=" ORDER BY ". $columns[$requestData['order'][0]['column']]."   ".$requestData['order'][0]['dir']."   LIMIT ".$requestData['start']." ,".$requestData['length']."   "; // $requestData['order'][0]['column'] contains colmun index, $requestData['order'][0]['dir'] contains order such as asc/desc , $requestData['start'] contains start row number ,$requestData['length'] contains limit length.
 	$query=mysqli_query($conn, $sql) or die("./?action=getSellC: get PO"); // again run query with limit
 	
 } else {	
@@ -50,7 +53,7 @@ if( !empty($requestData['search']['value']) ) {
 	$sql = "SELECT s.status,s.comentarios,s.banco,s.noFac,s.id,s.total,s.created_at,s.fac,p.`name`,r.note,CONCAT(ELT(WEEKDAY(s.created_at) + 1, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo')) AS nombre_dia, DATE_FORMAT(s.created_at,'%d/%m/%Y')as fecha";
 	$sql.=" FROM sell s, pacient p, reservation r";
 	$sql.=" WHERE  p.id=s.idPac  AND operation_type_id='2' AND s.idReser=r.id AND s.`status`='0'"; 
-	$sql.=" ORDER BY id LIMIT ".$requestData['start']." ,".$requestData['length']."   ";
+	$sql.=" ORDER BY ". $columns[$requestData['order'][0]['column']]."   ".$requestData['order'][0]['dir']."   LIMIT ".$requestData['start']." ,".$requestData['length']."   ";
 	$query=mysqli_query($conn, $sql) or die("./?action=getSellC: get PO");
 	
 }
@@ -79,13 +82,13 @@ while( $row=mysqli_fetch_array($query) ) {  // preparing an array
     //RECORRIDO  
     $tPa="";$tBa="";$typeP=0;
 
-    $typeP = OperationData::getAllBySellPayE($row["id"]);
+    $typeP = OperationDetailData::getAllBySellPayE($row["id"]);
     foreach ($typeP as $key) {
     
-    $typeP= '<td>'.number_format($key->cash,2).'</td>';
+    $typeP= '<td>'.number_format($key->total,2).'</td>';
     }
     $nestedData[]= $typeP;
-    $typeP = OperationData::getAllBySellPay($row["id"]);
+    $typeP = OperationPaymentData::getByOperationId($row["id"]);
     foreach ($typeP as $key) {
     
             if($key->tname=="T. DEBITO" || $key->tname=="T. CREDITO")

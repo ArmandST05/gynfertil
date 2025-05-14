@@ -1,12 +1,12 @@
 <?php
-if(isset($_GET["idTypePay"])){
+if(isset($_GET["paymentTypeId"])){
 
 	$pay=$_SESSION["payments"];
 
 		$npay= null;
 		$nx=0;
 		foreach($pay as $c){
-			if($c["idType"]!=$_GET["idTypePay"]){
+			if($c["id"]!=$_GET["paymentTypeId"]){
 				$npay[$nx]= $c;
 			}
 			$nx++;
@@ -14,6 +14,6 @@ if(isset($_GET["idTypePay"])){
 		$_SESSION["payments"] = $npay;
 	}
 
-print "<script>window.location='index.php?view=sales/new-details&idRes=".$_GET['idRes']."&id_paciente=".$_GET['id_paciente']."&idMed=".$_GET['idMed']."&fecha=".$_GET['fecha']."';</script>";
+print "<script>window.location='index.php?view=sales/new-details&reservationId=".$_GET['reservationId']."&patientId=".$_GET['patientId']."&medicId=".$_GET['medicId']."&date=".$_GET['date']."';</script>";
 
 ?>

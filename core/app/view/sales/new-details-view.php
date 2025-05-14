@@ -1,371 +1,342 @@
 <?php
-$id_paciente = isset($_GET["id_paciente"])  ? $_GET['id_paciente'] : "";
-$idMed = isset($_GET["idMed"])  ? $_GET['idMed'] : "";
-$idRes = isset($_GET["idRes"])  ? $_GET['idRes'] : "0";
-$date = isset($_GET["fecha"])  ? $_GET['fecha'] : "";
-$user = isset($_SESSION["user_id"])  ? $_SESSION["user_id"] : null;
-$tipo = "";
+$patientId = isset($_GET["patientId"])  ? $_GET['patientId'] : "";
+$medicId = isset($_GET["medicId"])  ? $_GET['medicId'] : "";
+$reservationId = isset($_GET["reservationId"])  ? $_GET['reservationId'] : "0";
+$date = isset($_GET["date"])  ? $_GET['date'] : "";
 
-$users = UserData::get_tipo_usuario($user);
-foreach ($users as $key) {
-  $tipo = $key->tipo_usuario;
-}
+$user = UserData::getLoggedIn();
+$userType = $user->user_type;
 
-if ($tipo == "su" || $tipo == "sub") {
-  $paymentTypes = ProductData::getTypePay();
-} else {
-  $paymentTypes = ProductData::getTypePayeX();
-}
-$pro = ProductData::getLikeSell();
-
-$pen = ProductData::getPendiente($_GET["id_paciente"]);
+$patient = PatientData::getById($patientId);
+$paymentTypes = PaymentTypeData::getAll();
+$products = array_merge(ProductData::getAllByTypeId(3), ProductData::getAllByTypeId(4), ProductData::getAllByTypeId(1)); //Insumos, Medicamentos y conceptos ingresos para venta
+$pendingSales = OperationData::getBySaleStatusPatient(0, $patientId);
 
 $total = 0;
-$totalPayments = 0;
-$patient = PatientData::getById($id_paciente);
+$totalPayment = 0;
 
-$bankAccounts = BankAccountData::getAllByStatus(1);
+$patientTreatment = TreatmentData::getPatientActualTreatment($patientId);
+$patientTreatmentId = (isset($patientTreatment)) ? $patientTreatment->id : null;
+$treatmentName = null;
+$treatmentDefaultPrice = null;
+if ($patientTreatmentId) {
+  $treatmentName = $patientTreatment->treatment_name;
+  $treatmentDefaultPrice = $patientTreatment->default_price;
+}
+if ($reservationId) {
+  $reservationData = ReservationData::getById($reservationId);
+}
 ?>
-<script src="assets/jquery-2.1.1.min.js" type="text/javascript"></script>
-<link href="assets/select2.min.css" rel="stylesheet" />
-<script src="assets/select2.min.js"></script>
-<script type="text/javascript">
-  $(document).ready(function() {
-    $("#product_id").select2({});
-  });
-
-  function seleccion(valor) {
-    $.ajax({
-      type: "POST",
-      url: "./?action=getPrecioSell",
-      data: "valor=" + valor,
-
-      error: function() {
-        alert("error petición ajax");
-      },
-      success: function(data) {
-
-        $("#price").val(data);
-
-      }
-    });
-  }
-</script>
 <div class="row">
   <div class="col-md-12">
-    <h1>Ventas</h1>
-    <form method="post" action="index.php?view=addtocart" autocomplete="off">
-      <div class="row">
-        <div class="col-lg-9">
-          <label for="inputEmail1" class="col-lg-3 control-label">Paciente</label>
-          <input type="text" class="form-control" value="<?php echo $patient->name ?>" readonly>
-        </div>
-      </div>
-      <div class="row">
-        <div class="form-group">
-          <?php if (!empty($pen)) { ?>
-            <p class="alert alert-warning">
-            <?php
-            foreach ($pen as $p) {
-              echo "Pendiente por pagar, " . "<a href='./?view=sales/edit&id=$p->id'>LIQUIDAR</a><br>";
-            }
+    <h1>Nueva Venta</h1>
+    <div class="row">
+
+      <div class="form-group">
+        <?php if (!empty($pendingSales)) { ?>
+          <p class="alert alert-warning">
+
+          <?php
+          foreach ($pendingSales as $p) {
+            echo "Pendiente por pagar, " . "<a href='./?view=sales/edit&id=$p->id'>LIQUIDAR</a><br>";
           }
-            ?></p>
-            <div class="col-lg-3">
-              <label for="inputEmail1" class="col-lg-3 control-label">Medicamento/Conceptos</label>
-              <select name="product_id" id="product_id" class="form-control" onchange="seleccion(this.value)" autofocus required>
-                <option value="0">-- SELECCIONE --</option>
-                <?php foreach ($pro as $p) : ?>
-                  <option value="<?php echo $p->id; ?>"><?php echo $p->id . " - " . $p->name ?></option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <div class="col-lg-3">
-              <label for="inputEmail1" class="col-lg-3 control-label">Costo</label>
-              <input type="number" step="any" class="form-control" autofocus name="price" id="price" required placeholder="Costo ...">
-            </div>
-
-            <div class="col-lg-2">
-              <label for="inputEmail1" class="col-lg-3 control-label">Cantidad</label>
-              <input type="number" class="form-control" value="1" autofocus name="q" placeholder="Cantidad" required>
-            </div>
-
-            <div class="col-lg-2">
-              <br>
-              <button type="submit" class="btn btn-primary">Agregar</button>
-            </div>
-            <input type="hidden" id="idRes" name="idRes" value="<?php echo $idRes ?>" class="form-control">
-            <input type="hidden" id="idPac" name="idPac" value="<?php echo $id_paciente ?>" class="form-control">
-            <input type="hidden" id="idMed" name="idMed" value="<?php echo $idMed ?>" class="form-control">
-            <input type="hidden" id="fecha" name="fecha" value="<?php echo $date ?>" class="form-control">
-        </div>
-
-      </div>
-  </div>
-  </form>
-
-  <?php if (isset($_SESSION["errors"])) : ?>
-    <h2>Errores</h2>
-    <p></p>
-    <table class="table table-bordered table-hover">
-      <tr class="danger">
-        <th>Código</th>
-        <th>Producto</th>
-        <th>Mensaje</th>
-      </tr>
-      <?php foreach ($_SESSION["errors"]  as $error) :
-        $product = ProductData::getById($error["product_id"]);
-      ?>
-        <tr class="danger">
-          <td><?php echo $product->id; ?></td>
-          <td><?php echo $product->name; ?></td>
-          <td><b><?php echo $error["message"]; ?></b></td>
-        </tr>
-
-      <?php endforeach; ?>
-    </table>
-  <?php
-    unset($_SESSION["errors"]);
-  endif; ?>
-
-
-  <!--- Carrito de compras :) -->
-  <?php if (isset($_SESSION["cart"])) :
-  ?>
-    <div class="row">
-      <div class="col-lg-12">
-        <h3>Lista de venta</h3>
+        }
+          ?></p>
       </div>
     </div>
-    <div class="row">
-      <div class="col-lg-12">
-        <table class="table table-bordered table-hover">
-          <thead>
-            <th style="width:30px;">ID</th>
-            <th style="width:250px;">Producto/Concepto</th>
-            <th style="width:250px;">Tipo</th>
-            <th style="width:30px;">Cantidad</th>
-            <th style="width:85px;">Precio Unitario</th>
-            <th style="width:100px;">Precio Total</th>
-            <th></th>
-          </thead>
-          <?php foreach ($_SESSION["cart"] as $p) :
-            $product = ProductData::getById($p["product_id"]);
-          ?>
-            <tr>
-              <td st><?php echo $product->id; ?></td>
-              <td><?php echo $product->name; ?></td>
-              <td><?php echo $p["type"]; ?></td>
-              <td><?php echo $p["q"]; ?></td>
-              <td><b>$ <?php echo number_format($p["price"], 2); ?></b></td>
-              <td><b>$ <?php $pt = $p["price"] * $p["q"];
-                        $total += $pt;
-                        echo number_format($pt, 2); ?></b></td>
-              <td style="width:30px;"><a href="index.php?view=clearcart1&idRes=<?php echo $idRes ?>&product_id=<?php echo $product->id; ?>&id_paciente=<?php echo $id_paciente; ?>&idMed=<?php echo $idMed; ?>&fecha=<?php echo $date; ?>" class="btn btn-danger"><i class="glyphicon glyphicon-remove"></i> Cancelar</a></td>
-            </tr>
-
-          <?php endforeach; ?>
-        </table>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-lg-12">
-        <h3>Resumen</h3>
-      </div>
-    </div>
-    <div class="row">
-      <label for="inputEmail1" class="col-lg-2 control-label">Nuevo Pago:</label>
-    </div>
-    <div class="row">
-      <form method="POST" action="index.php?action=sales/add-cart-payment" autocomplete="off">
+    <?php if ($reservationData) : ?>
+      <div class="row">
         <div class="form-group">
-          <div class="col-lg-2">
-            <select name="paymentTypeId" id="paymentTypeId" class="form-control" required>
-              <option value="">-- TIPO PAGO --</option>
-              <?php foreach ($paymentTypes as $type) : ?>
-                <option value="<?php echo $type->id; ?>"><?php echo $type->name; ?></option>
-              <?php endforeach; ?>
-            </select>
+          <div class="col-lg-4">
+            <label class="control-label">Fecha de cita a cobrar:</label>
+            <input type="text" class="form-control" value="<?php echo $reservationData->date_format ?>" readonly>
           </div>
-          <div class="col-lg-3" id="divAccountId">
-            <select name="bankAccountId" class="form-control">
-              <option value="0">-- NO. CUENTA --</option>
-              <?php foreach ($bankAccounts as $bankAccount) : ?>
-                <option value="<?php echo $bankAccount->id; ?>"><?php echo $bankAccount->name; ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="col-lg-2" id="divIsInvoice">
-            <div class="radio">
-              <label>
-                <input type="radio" name="isInvoice" id="isInvoiceTrue" value="1">
-                SÍ facturar
-              </label>
-            </div>
-            <div class="radio">
-              <label>
-                <input type="radio" name="isInvoice" id="isInvoiceFalse" value="0" checked>
-                NO facturar
-              </label>
-            </div>
-          </div>
-          <div class="col-lg-2">
-            <input type="text" name="money" required class="form-control" id="money" placeholder="Total">
-          </div>
-          <div class="col-md-1">
-            <button type="submit" class="btn btn-primary"><i class=""></i> Agregar</button>
-          </div>
-          <input type="hidden" id="id_paciente" name="id_paciente" value="<?php echo $id_paciente ?>" class="form-control">
-          <input type="hidden" id="idMed" name="idMed" value="<?php echo $idMed ?>" class="form-control">
-          <input type="hidden" id="idRes" name="idRes" value="<?php echo $idRes ?>" class="form-control">
-          <input type="hidden" id="fecha" name="fecha" value="<?php echo $date ?>" class="form-control">
         </div>
-      </form>
+      </div>
+    <?php endif; ?>
+    <div class="row">
+      <div class="form-group">
+        <div class="col-lg-4">
+          <label class="control-label">Cliente:</label>
+          <input type="text" class="form-control" autofocus name="cliente" id="cliente" required placeholder="Cliente" value="<?php echo $patient->name ?>" readonly>
+        </div>
+        <div class="col-lg-2">
+          <label class="control-label">Tratamiento actual:</label>
+          <input type="text" class="form-control" autofocus name="treatmentName" id="treatmentName" required placeholder="Tratamiento actual" value="<?php echo $treatmentName ?>" readonly>
+        </div>
+        <div class="col-lg-2">
+          <label class="control-label">Precio predeterminado:</label>
+          <input type="text" class="form-control" autofocus name="defaultPrice" id="defaultPrice" required placeholder="Precio predeterminado" value="<?php echo $treatmentDefaultPrice ?>" readonly>
+        </div>
+        <div class="col-lg-2">
+          <label class="control-label">Fecha:</label>
+          <input type="date" class="form-control" name="date" id="date" max="<?php echo date("Y-m-d") ?>" value="<?php echo substr($date, 0, 10) ?>" onchange="updateSaleDate()">
+        </div>
+      </div>
     </div>
-    <br>
+    <form method="post" action="index.php?action=sales/add-cart-product" autocomplete="off">
+      <div class="row">
+        <div class="form-group">
+          <div class="col-lg-4">
+            <label for="inputEmail1" class="col-lg-3 control-label">Medicamento/Conceptos:</label>
+            <select name="productId" id="productId" class="form-control" onchange="selectProduct(this.value)" autofocus required>
+              <option value="0">-- SELECCIONE --</option>
+              <?php foreach ($products as $p) : ?>
+                <option value="<?php echo $p->id; ?>"><?php echo $p->id . " - " . $p->name ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-lg-3">
+            <label class="control-label">Costo:</label>
+            <div class="input-group">
+              <span class="input-group-addon">$</span>
+              <input type="number" step="any" class="form-control" autofocus name="price" id="price" required placeholder="Costo">
+            </div>
+          </div>
+          <div class="col-lg-3">
+            <label for="inputEmail1" class="col-lg-3 control-label">Cantidad:</label>
+            <input type="number" class="form-control" value="1" autofocus name="quantity" placeholder="Cantidad" required>
+          </div>
+          <div class="col-lg-2">
+            <br>
+            <button type="submit" class="btn btn-primary">Agregar</button>
+          </div>
+          <input type="hidden" name="reservationId" value="<?php echo $reservationId ?>" class="form-control">
+          <input type="hidden" name="patientId" value="<?php echo $patientId ?>" class="form-control">
+          <input type="hidden" name="medicId" value="<?php echo $medicId ?>" class="form-control">
+          <input type="hidden" name="date" value="<?php echo $date ?>" class="form-control">
+        </div>
+      </div>
+    </form>
     <div class="row">
       <div class="col-md-12">
-        <?php if (isset($_SESSION["payments"])) : ?>
+        <?php if (isset($_SESSION["errors"])) : ?>
+          <h3>Errores</h3>
+          <p></p>
+          <table class="table table-bordered table-hover">
+            <tr class="danger">
+              <th>Código</th>
+              <th>Producto</th>
+              <th>Mensaje</th>
+            </tr>
+            <?php foreach ($_SESSION["errors"]  as $error) :
+              $product = ProductData::getById($error["id"]);
+            ?>
+              <tr class="danger">
+                <td><?php echo $product->id; ?></td>
+                <td><?php echo $product->name; ?></td>
+                <td><b><?php echo $error["message"]; ?></b></td>
+              </tr>
+
+            <?php endforeach; ?>
+          </table>
+        <?php
+          unset($_SESSION["errors"]);
+        endif; ?>
+
+        <!--- Carrito de compras -->
+        <?php if (isset($_SESSION["cart"])) : ?>
+          <h3>Lista de venta</h3>
           <table class="table table-bordered table-hover">
             <thead>
-              <th>Forma de pago</th>
-              <th>Total</th>
-              <th>No. cuenta</th>
-              <th>Factura</th>
-              <th>Acciones</th>
+              <th style="width:30px;">Id</th>
+              <th style="width:250px;">Producto/Concepto</th>
+              <th style="width:250px;">Tipo</th>
+              <th style="width:30px;">Cantidad</th>
+              <th style="width:85px;">Precio Unitario</th>
+              <th style="width:100px;">Total</th>
+              <th></th>
             </thead>
-            <?php foreach ($_SESSION["payments"] as $payment) :
-              $paymentType = ProductData::getByIdTypePay($payment["idType"]);
-              $totalPayments += $payment["money"];
-              $bankAccount = BankAccountData::getById($payment["bankAccountId"]);
+            <?php foreach ($_SESSION["cart"] as $productCart) :
+              $product = ProductData::getById($productCart["id"]);
             ?>
               <tr>
-                <td><?php echo  $paymentType->name; ?></td>
-                <td><b>$ <?php echo number_format($payment["money"], 2); ?></b></td>
-                <td><?php echo ($bankAccount) ? $bankAccount->name : "NO APLICA" ?></td>
-                <td>
-                <?php if($payment["isInvoice"] == 1):?>
-                  <button type="button" class="btn btn-xs btn-success" onclick="changeIsInvoicePayment(`<?php echo $payment['idType']?>`,0)">SÍ FACTURAR</button>
-                <?php else:?>
-                  <button type="button" class="btn btn-xs btn-danger" onclick="changeIsInvoicePayment(`<?php echo $payment['idType']?>`,1)">NO FACTURAR</button>
-                <?php endif;?>
+                <td st><?php echo $product->id; ?></td>
+                <td><?php echo $product->name; ?></td>
+                <td><?php echo $productCart["typeName"]; ?></td>
+                <td><?php echo $productCart["quantity"]; ?></td>
+                <td><b>$<?php echo number_format($productCart["price"], 2); ?></b></td>
+                <td><b>$<?php $totalProduct = $productCart["price"] * $productCart["quantity"];
+                        $total += $totalProduct;
+                        echo number_format($totalProduct, 2); ?>
+                  </b>
                 </td>
-                <td style="width:50px;" id="row<?php echo $payment["idType"] ?>">
-                  <a href="index.php?action=sales/delete-cart-payment&idRes=<?php echo $idRes ?>&idTypePay=<?php echo $paymentType->id; ?>&id_paciente=<?php echo $id_paciente; ?>&idMed=<?php echo $idMed ?>&fecha=<?php echo $date ?>" class="btn btn-sm btn-danger"><i class="glyphicon glyphicon-remove"></i></a>
+                <td style="width:30px;">
+                  <a href="index.php?action=sales/delete-cart-product&reservationId=<?php echo $reservationId ?>&productId=<?php echo $product->id; ?>&patientId=<?php echo $patientId; ?>&medicId=<?php echo $medicId; ?>&date=<?php echo $date; ?>" class="btn btn-sm btn-danger">
+                    <i class="glyphicon glyphicon-remove"></i> Cancelar
+                  </a>
                 </td>
               </tr>
             <?php endforeach; ?>
           </table>
+          <hr>
+
+          <h3>Pagos</h3>
+          <form method="POST" action="index.php?action=sales/add-cart-payment" autocomplete="off">
+            <div class="form-group">
+              <label for="inputEmail1" class="col-lg-2 control-label">Forma de pago:</label>
+              <div class="col-lg-4">
+                <select name="paymentType" class="form-control" required>
+                  <option value="">-- SELECCIONE --</option>
+                  <?php foreach ($paymentTypes as $paymentType) : ?>
+                    <option value="<?php echo $paymentType->id; ?>"><?php echo $paymentType->name; ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="col-lg-3">
+                <div class="input-group">
+                  <span class="input-group-addon">$</span>
+                  <input type="number" name="quantity" step="any" required class="form-control" id="quantity" placeholder="Total">
+                </div>
+              </div>
+              <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa plus"></i> Agregar pago</button>
+              </div>
+            </div>
+            <input type="hidden" id="patientId" name="patientId" value="<?php echo $patientId ?>" class="form-control">
+            <input type="hidden" id="medicId" name="medicId" value="<?php echo $medicId ?>" class="form-control">
+            <input type="hidden" id="reservationId" name="reservationId" value="<?php echo $reservationId ?>" class="form-control">
+            <input type="hidden" id="date" name="date" value="<?php echo $date ?>" class="form-control">
+            <input type="hidden" id="totalSale" name="totalSale" value="<?php echo $total ?>" class="form-control">
+          </form>
+          <div class="row">
+            <div class="col-md-6">
+              <table class="table table-bordered">
+
+                <?php if (isset($_SESSION["payments"])) : ?>
+                  <table class="table table-bordered table-hover">
+                    <thead>
+                      <th>Id</th>
+                      <th>Forma de pago</th>
+                      <th>Total</th>
+                      <th></th>
+                    </thead>
+                    <?php foreach ($_SESSION["payments"] as $payment) :
+                      $paymentData = PaymentTypeData::getById($payment["id"]);
+                    ?>
+                      <tr>
+                        <td><?php echo $payment["id"]; ?></td>
+                        <td><?php echo  $paymentData->name; ?></td>
+                        <td><b>$ <?php $quantity = $payment["quantity"];
+                                  $totalPayment += $quantity;
+                                  echo number_format($quantity, 2); ?></b></td>
+                        <td style="width:25px;"><a href="index.php?action=sales/delete-cart-payment&reservationId=<?php echo $reservationId ?>&paymentTypeId=<?php echo $paymentData->id; ?>&patientId=<?php echo $patientId; ?>&medicId=<?php echo $medicId ?>&date=<?php echo $date ?>" class="btn btn-sm btn-danger"><i class="glyphicon glyphicon-remove"></i></a></td>
+                      </tr>
+
+                    <?php endforeach; ?>
+
+                  </table>
+                <?php endif; ?>
+            </div>
+
+            <div class="col-md-6">
+              <table class="table table-bordered">
+                <tr>
+                  <td><b>Total Venta</b></td>
+                  <td><b>$ <?php echo number_format($total, 2); ?></b></td>
+                </tr>
+                <tr>
+                  <td><b>Pagado<b></td>
+                  <td><b>$<?php echo number_format($totalPayment, 2) ?></b></td>
+                </tr>
+                <tr>
+                  <td><b>Saldo</b></td>
+                  <td><b>$<?php echo ((floatval($total - $totalPayment)) < 0) ? "0.00" : number_format($total - $totalPayment, 2); ?></b></td>
+                </tr>
+              </table>
+            </div>
+          </div>
+
+          <form method="POST" class="form-horizontal" id="saveSale" action="index.php?action=sales/add">
+
+            <div class="form-group">
+              <div class="col-lg-offset-2 col-lg-10">
+                <div class="checkbox">
+                  <label>
+                    <input name="is_oficial" type="hidden" value="1">
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="col-lg-10">
+                <textarea class="form-control" name="description" rows="10" cols="50" placeholder="Comentarios"></textarea>
+              </div>
+              <div class="col-lg-offset-6 col-lg-10">
+                <div class="checkbox">
+                  <label>
+                    <a href="index.php?action=sales/delete-all-cart&reservationId=<?php echo $reservationId ?>&patientId=<?php echo $patientId ?>&medicId=<?php echo $medicId ?>&date=<?php echo $date ?>" class="btn btn-danger"><i class="glyphicon glyphicon-remove"></i> Cancelar venta</a>
+                    <button class="btn btn-primary"><i class="glyphicon glyphicon-usd"></i><i class="glyphicon glyphicon-usd"></i> Finalizar venta</button>
+                  </label>
+
+                  <input type="hidden" name="total" value="<?php echo $total; ?>" class="form-control" placeholder="Total">
+                  <input type="hidden" id="patientId" name="patientId" value="<?php echo $patientId ?>" class="form-control">
+                  <input type="hidden" id="medicId" name="medicId" value="<?php echo $medicId ?>" class="form-control">
+                  <input type="hidden" id="reservationId" name="reservationId" value="<?php echo $reservationId ?>" class="form-control">
+                  <input type="hidden" id="discount" name="discount" value="0" class="form-control">
+                  <input type="hidden" id="totalPayment" name="totalPayment" value="<?php echo $totalPayment ?>" class="form-control">
+                  <input type="hidden" id="date" name="date" value="<?php echo $date ?>" class="form-control">
+                </div>
+              </div>
+            </div>
+          </form>
+          <script type="text/javascript">
+            $("#saveSale").submit(function(e) {
+              discount = $("#discount").val();
+              money = $("#totalSale").val();
+              totalPayment = $("#totalPayment").val();
+              if (money <= 0) {
+                alert("Ingresa productos a tu venta");
+                e.preventDefault();
+              } else if (money > (<?php echo $total; ?> - discount)) {
+                alert("No se puede efectuar la operacion verifica tus cantidades");
+                e.preventDefault();
+              } else {
+                if (discount == "") discount = 0;
+                //Validar si se liquida
+                if (totalPayment >= (<?php echo $total; ?>)) {
+                  go = confirm("Cambio: $" + (totalPayment - (<?php echo $total; ?>)) + " Pesos");
+                } else {
+                  go = confirm("Pendiente por pagar: $" + ((<?php echo $total; ?>) - totalPayment) + " Pesos");
+
+                }
+
+                if (go) {} else {
+                  e.preventDefault();
+                }
+              }
+            });
+          </script>
+
         <?php endif; ?>
       </div>
     </div>
-    <div class="row">
-      <div class="col-md-6">
-        <table class="table table-bordered">
-          <tr>
-            <td><b>Total Venta:</b></td>
-            <td><b>$ <?php echo number_format($total, 2); ?></b></td>
-            <td><b>Pagado:<b></td>
-            <td><b>$<?php echo number_format($totalPayments, 2) ?></b></td>
-            <td><b>Saldo:</b></td>
-            <td><b>$<?php echo ((floatval($total - $totalPayments)) < 0) ? "0.00" : number_format($total - $totalPayments, 2); ?></b></td>
-          </tr>
-        </table>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-lg-12">
-        <form method="POST" class="form-horizontal" id="processSale" action="index.php?action=sales/add">
-          <div class="form-group">
-            <div class="col-lg-offset-2 col-lg-10">
-              <div class="checkbox">
-                <label>
-                  <input name="is_oficial" type="hidden" value="1">
-                </label>
-              </div>
-            </div>
-          </div>
-          <div class="form-group">
-            <div class="col-lg-10">
-              <textarea class="form-control" name="note" rows="10" cols="50" placeholder="Comentarios"></textarea>
-            </div>
-            <div class="col-lg-offset-6 col-lg-10">
-              <div class="checkbox">
-                <label>
-                  <a href="index.php?view=clearcart&idRes=<?php echo $idRes ?>&id_paciente=<?php echo $id_paciente ?>&idMed=<?php echo $idMed ?>&fecha=<?php echo $date ?>" class="btn btn-danger "><i class="glyphicon glyphicon-remove"></i> Cancelar</a>
-                  <button class="btn btn-primary"><i class="glyphicon glyphicon-usd"></i> Finalizar Venta</button>
-                </label>
-                <input type="hidden" name="total" value="<?php echo $total; ?>" class="form-control" placeholder="Total">
-                <input type="hidden" id="id_paciente" name="id_paciente" value="<?php echo $id_paciente ?>" class="form-control">
-                <input type="hidden" id="idMed" name="idMed" value="<?php echo $idMed ?>" class="form-control">
-                <input type="hidden" id="idRes" name="idRes" value="<?php echo $idRes ?>" class="form-control">
-                <input type="hidden" id="discount" name="discount" value="0" class="form-control">
-                <input type="hidden" id="totalGen" name="totalGen" value="<?php echo $totalPayments ?>" class="form-control">
-                <input type="hidden" id="fecha" name="date" value="<?php echo $date ?>" class="form-control">
-              </div>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-    <script>
-      $(document).ready(function() {
-        $("#divAccountId").hide();
-        $("#divIsInvoice").hide();
-      });
-
-      $("#processSale").submit(function(e) {
-        discount = $("#discount").val();
-        money = $("#total").val();
-        totalGen = $("#totalGen").val();
-
-        if (money > (<?php echo $total; ?> - discount)) {
-          alert("No se puede efectuar la operación, verifica tus cantidades");
-          e.preventDefault();
-        } else {
-          if (discount == "") {
-            discount = 0;
-          }
-          /************ Validar liquidado *************/
-          if (totalGen >= (<?php echo $total; ?>)) {
-            go = confirm("Cambio: $" + (totalGen - (<?php echo $total; ?>)) + " Pesos");
-          } else {
-            go = confirm("Pendiente por pagar: $" + ((<?php echo $total; ?>) - totalGen) + " Pesos");
-          }
-
-          if (go) {} else {
-            e.preventDefault();
-          }
-        }
-      });
-
-      $("#paymentTypeId").change(function() {
-        $("#isInvoiceFalse").prop("checked", true);
-        $("#bankAccountId").val("");
-        if ($(this).val() == 2 || $(this).val() == 3 || $(this).val() == 10) { //Débito 4-Crédito 5- Transferencia 10
-          $("#divAccountId").show();
-          $("#divIsInvoice").show();
-        } else {
-          $("#divAccountId").hide();
-          $("#divIsInvoice").hide();
-        }
-      });
-
-      function changeIsInvoicePayment(paymentTypeId, isInvoice) {
-        $.ajax({
-          type: "POST",
-          url: "./?action=sales/update-cart-payment-invoice",
-          data: {
-            "paymentTypeId":paymentTypeId,
-            "isInvoice":isInvoice
-          },
-          complete: function(data) {
-            window.location.reload();
-          }
-        });
-      }
-    </script>
-
-  <?php endif; ?>
+  </div>
 
 </div>
+<script type="text/javascript">
+  $(document).ready(function() {
+    $("#productId").select2({});
+  });
+
+  function selectProduct(value) {
+    $.ajax({
+      type: "POST",
+      url: "./?action=products/get-product-price",
+      data: "valor=" + value,
+
+      error: function() {
+        alert("Ocurrió un error al obtener el precio.");
+      },
+      success: function(data) {
+        $("#price").val(data);
+      }
+    });
+  }
+
+  function updateSaleDate() {
+    let actualDate = new Date();
+    let actualHour = actualDate.getUTCHours() + ":" + actualDate.getUTCMinutes() + ":" + actualDate.getUTCSeconds();
+    window.location.href = "index.php?view=sales/new-details&reservationId=" + "<?php echo $reservationId ?>" + "&patientId=" + "<?php echo $patientId ?>" + "&medicId=" + "<?php echo $medicId ?>" + "&date=" + $("#date").val() + " " + actualHour + "";
+  }
+</script>

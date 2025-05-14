@@ -1,21 +1,18 @@
 <?php
 if(count($_POST)>0){
-	$product = ProductData::getById($_POST["product_id"]);
-	$product->barcode = $_POST["barcode"];
-	$product->name = $_POST["name"];
-	$product->price_in = $_POST["price_in"];
-	$product->price_out = $_POST["price_out"];
-  	$product->inventary_min = $_POST["inventary_min"];
-	$product->presentation = $_POST["presentation"];
-  	$product->brand = $_POST["brand"];
-	$is_active=0;
-	if(isset($_POST["is_active"])){ $is_active=1;}
+	$product = ProductData::getById($_POST["id"]);
 
-	$product->is_active=$is_active;
+	$product->barcode = trim($_POST["barcode"]);
+	$product->name = trim($_POST["name"]);
+	$product->price_in = $_POST["priceIn"];
+	$product->price_out = $_POST["priceOut"];
+  	$product->minimum_inventory = (($_POST["minimumInventory"] != "") ? $_POST["minimumInventory"]:0);
+
+  	$product->is_active_user = ((isset($_POST["isActiveUser"])) ? 1 : 0);
 	$product->user_id = $_SESSION["user_id"];
 	$product->update();
-	
-	setcookie("prdupd","true");
-	Core::redir("./index.php?view=products/edit&id=".$_POST["product_id"]);
+
+	setcookie("updatedProduct","true");
+	print "<script>window.location='index.php?view=products/edit&id=".$_POST['id']."';</script>";
 }
 ?>

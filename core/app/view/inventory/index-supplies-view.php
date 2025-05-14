@@ -1,34 +1,63 @@
-<link rel="stylesheet" href="datatables/dataTables.bootstrap.css" />
-<script src="scripts/jquery-ui-1.10.1.custom.min.js" type="text/javascript"></script>
+<?php
+$user = UserData::getLoggedIn();
+$userType = (isset($user)) ? $user->user_type : null;
 
+if ($userType == "r") {
+	$searchBranchOfficeId = $user->getBranchOffice()->id;
+	$branchOffices = [$user->getBranchOffice()];
+} else {
+	if ($userType == "co") {
+		$searchBranchOfficeId = (isset($_GET["searchBranchOfficeId"])) ? $_GET["searchBranchOfficeId"] : $user->getBranchOffice()->id;
+	} else {
+		$searchBranchOfficeId = (isset($_GET["searchBranchOfficeId"])) ? $_GET["searchBranchOfficeId"] : 0;
+	}
+	$branchOffices = BranchOfficeData::getAllByStatus(1);
+}
+?>
 <div class="row">
 	<div class="col-md-12">
-		<!--div class="btn-group  pull-right">
-<a href="index.php?view=re" class="btn btn-default">Entradas de Medicamentos e insumos</a>
-</div-->
-		<div class="btn-group  pull-right">
-			<a href="index.php?view=supplies/new" class="btn btn-default">Agregar Insumo</a>
-		</div>
-		<h1>Inventario Insumos</h1>
-		<div class="clearfix"></div>
-		<hr>
-		<table id="lookup1" class="table table-bordered table-hover">
-			<thead bgcolor="#eeeeee" align="center">
-				<tr>
-					<th>Nombre</th>
-					<th>Disponible</th>
-					<th>Tipo</th>
-					<th>Inventario</th>
-					<th>Insumos</th>
-				</tr>
-			</thead>
-			<tbody>
-			</tbody>
-		</table>
-
+		<form class="form-horizontal" method="GET" enctype="multipart/form-data" action="index.php" role="form">
+			<div class="form-group">
+				<label for="inputEmail1" class="col-lg-1 control-label">Sucursal</label>
+				<div class="col-md-3">
+					<select name="searchBranchOfficeId" class="form-control" required>
+						<option value="">-- SELECCIONE --</option>
+						<?php foreach ($branchOffices as $branchOffice) : ?>
+							<option value="<?php echo $branchOffice->id; ?>" <?php echo ($searchBranchOfficeId == $branchOffice->id) ? "selected" : "" ?>><?php echo $branchOffice->name; ?></option>
+						<?php endforeach; ?>
+					</select>
+					<input type="hidden" name="view" value="inventory/index-supplies">
+				</div>
+				<div class="col-md-1">
+					<button type="submit" class="btn btn-primary">Buscar</button>
+				</div>
+			</div>
+		</form>
 	</div>
 </div>
 
+<?php if ($searchBranchOfficeId != 0) : ?>
+	<div class="row">
+		<div class="col-md-12">
+			<h1>Inventario Insumos</h1>
+			<div class="clearfix"></div>
+			<hr>
+			<table id="dataTable" class="table table-bordered table-hover">
+				<thead bgcolor="#eeeeee" align="center">
+					<tr>
+						<th>Nombre</th>
+						<th>Disponible</th>
+						<th>Mínimo</th>
+						<th>Tipo</th>
+						<th>Acciones</th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</div>
+<?php endif; ?>
 </div>
 <!--/.content-->
 </div>
@@ -37,15 +66,9 @@
 
 
 <!--/.wrapper--><br />
-
-<script src="bootstrap/js/bootstrap.min.js" type="text/javascript"></script>
-
-<script src="datatables/jquery.dataTables.js"></script>
-<script src="datatables/dataTables.bootstrap.js"></script>
 <script>
 	$(document).ready(function() {
-		var dataTable = $('#lookup1').DataTable({
-
+		var dataTable = $('#dataTable').DataTable({
 			"language": {
 				"sProcessing": "Procesando...",
 				"sLengthMenu": "Mostrar _MENU_ registros",
@@ -74,13 +97,16 @@
 			"processing": true,
 			"serverSide": true,
 			"ajax": {
-
-				url: "./?action=inventory/get-all-supplies", // json datasource
+				url: "./?action=inventory/get-supplies", // json datasource
+				data: {
+					"searchBranchOfficeId": "<?php echo $searchBranchOfficeId ?>"
+				},
 				type: "post", // method  , by default get
 				error: function() { // error handling
 					$(".lookup-error").html("");
-					$("#lookup1").append('<tbody class="employee-grid-error"><tr><th colspan="3">No se han encontrado datos</th></tr></tbody>');
+					$("#dataTable").append('<tbody class="employee-grid-error"><tr><th colspan="3">No se encontró ningún dato.</th></tr></tbody>');
 					$("#lookup_processing").css("display", "none");
+
 				}
 			}
 		});

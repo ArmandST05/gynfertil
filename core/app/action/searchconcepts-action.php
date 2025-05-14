@@ -1,6 +1,6 @@
 	<?php
 
-$concepts = CategorySpend::getCatExpense($_GET["concept"]);
+$concepts = ExpenseCategoryData::getCatExpense($_GET["concept"]);
 
 if(count($concepts)>0){
 	?>

@@ -1,275 +1,196 @@
 <?php
+$user = UserData::getLoggedIn();
+$userType = $user->user_type;
+
+if ($userType == "su" || $userType == "co") {
+  $branchOffices = BranchOfficeData::getAllByStatus(1);
+} else {
+  $branchOffices = [$user->getBranchOffice()];
+}
+
+$months = ["1" => "Enero", "2" => "Febrero", "3" => "Marzo", "4" => "Abril", "5" => "Mayo", "6" => "Junio", "7" => "Julio", "8" => "Agosto", "9" => "Septiembre", "10" => "Octubre", "11" => "Noviembre", "12" => "Diciembre"];
 $patient = PatientData::getById($_GET["id"]);
 
-$birthdayDay = substr($patient->fecha_na, 8, 2);
-$birthdayMonth = substr($patient->fecha_na, 5, 2);
-$birthdayYear = substr($patient->fecha_na, 0, 4);
-
-$relativeBirthdayDay = substr($patient->relative_birthday, 8, 2);
-$relativeBirthdayMonth = substr($patient->relative_birthday, 5, 2);
-$relativeBirthdayYear = substr($patient->relative_birthday, 0, 4);
-
-$est = PatientData::get_estatus();
-
-$date2 = date('Y-m-d');
-$diff = abs(strtotime($date2) - strtotime($patient->fecha_na));
-
-$patients = PatientData::getAll();
-$sexes = PatientData::getAllSexes();
-$officialDocuments = OfficialDocumentData::getAll();
+$categories = PatientData::getPatientCategories();
+$counties = CountyData::getAll();
+$companies = CompanyData::getAll();
+$treatments = TreatmentData::getAll();
+$educationLevels = EducationLevelData::getAll();
 ?>
 <script src="plugins/croppie/js/croppie.js"></script>
 <link rel="stylesheet" href="plugins/croppie/css/croppie.css" />
 
 <div class="row">
   <div class="col-md-12">
-    <h1>Modificar Paciente</h1>
+    <h1>Editar Paciente</h1>
     <br>
-    <form class="form-horizontal" method="post" enctype="multipart/form-data" role="form">
-      <div class="form-group">
-        <div class="col-lg-12">
-          <div class="callout callout-warning">
-            <p>Si el paciente realizará un tratamiento de fertilidad, registra correctamente su FECHA DE NACIMIENTO y un DATO OFICIAL, además de TODOS los datos de su pareja, formará parte de su histórico.</p>
+    <div class="box box-primary">
+      <!-- /.box-header -->
+      <div class="box-body">
+        <form class="form-horizontal" method="post" enctype="multipart/form-data" action="index.php?action=patients/update" role="form">
+          <div class="form-group">
+            <label class="col-lg-2 control-label">Foto de perfil:</label>
+            <div class="col-md-6">
+              <div id="image_profile" style="width:300px; margin-top:10px"></div>
+              <label for="insert_image">
+                <a class="btn btn-success" style="margin-left:31px;">Seleccionar </a>
+              </label>
+              <button type="button" id="rotate_image" class="btn btn-primary rotate_image" data-deg="-90"><span class="glyphicon glyphicon-repeat"></span> Rotar</button>
+              <button type="button" id="reset_image" class="btn btn-danger" data-deg="-90"><span class="glyphicon glyphicon-cancel"></span>Eliminar</button>
+              <input id="insert_image" type="file" style='display: none;' name="image" accept="image/*" />
+            </div>
           </div>
-        </div>
-      </div>
-      <hr>
-      <div class="form-group">
-        <label class="col-lg-2 control-label">Foto de perfil:</label>
-        <div class="col-md-6">
-          <div id="image_profile" style="width:300px; margin-top:10px"></div>
-          <label for="insert_image">
-            <a class="btn btn-success" style="margin-left:31px;">Seleccionar </a>
-          </label>
-          <button type="button" id="rotate_image" class="btn btn-primary rotate_image" data-deg="-90"><span class="glyphicon glyphicon-repeat"></span> Rotar</button>
-          <button type="button" id="reset_image" class="btn btn-danger" data-deg="-90"><span class="glyphicon glyphicon-cancel"></span>Eliminar</button>
-          <input id="insert_image" type="file" style='display: none;' name="image" accept="image/*" />
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Nombre*:</label>
-        <div class="col-md-6">
-          <input type="text" id="name" name="name" value="<?php echo $patient->name; ?>" class="form-control" id="name" placeholder="Nombre" required>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Sexo*:</label>
-        <div class="col-md-6">
-          <select id="sexId" name="sexId" class="form-control">
-            <?php foreach ($sexes as $sex) : ?>
-              <option value="<?php echo $sex->id; ?>" <?php echo ($patient->sex_id == $sex->id) ? "selected" : "" ?>><?php echo $sex->name; ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Dato oficial del paciente:</label>
-        <div class="col-lg-2">
-          <select name="officialDocumentId" id="officialDocumentId" class="form-control">
-            <?php foreach ($officialDocuments as $officialDocument) : ?>
-              <option value="<?php echo $officialDocument->id ?>" <?php echo ($officialDocument->id == $patient->official_document_id) ? "selected" : "" ?>><?php echo $officialDocument->name ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <input type="text" id="officialDocumentValue" name="officialDocumentValue" value="<?php echo $patient->official_document_value; ?>" class="form-control" placeholder="Dato oficial">
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Dirección:</label>
-        <div class="col-lg-3">
-          <input type="text" id="calle" name="calle" value="<?php echo $patient->calle; ?>" class="form-control" id="calle" placeholder="Calle">
-        </div>
-        <div class="col-lg-1">
-          <input type="text" id="num" name="num" value="<?php echo $patient->num; ?>" class="form-control" id="num" placeholder="No.">
-        </div>
-        <div class="col-lg-2">
-          <input type="text" id="col" name="col" value="<?php echo $patient->col; ?>" class="form-control" id="col" placeholder="Colonia">
-        </div>
-      </div>
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Sucursal*</label>
+            <div class="col-md-6">
+              <select id="branchOfficeId" name="branchOfficeId" class="form-control" required>
+                <?php foreach ($branchOffices as $branchOffice) : ?>
+                  <option value="<?php echo $branchOffice->id; ?>" <?php echo ($branchOffice->id == $patient->branch_office_id) ? "selected" : "" ?>><?php echo $branchOffice->name; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Empresa</label>
+            <div class="col-md-6">
+              <select id="companyId" name="companyId" class="form-control" required>
+                <option value="0">PÚBLICO EN GENERAL</option>
+                <?php foreach ($companies as $company) : ?>
+                  <option value="<?php echo $company->id; ?>" <?php echo ($company->id == $patient->company_id) ? "selected" : "" ?>><?php echo $company->name; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">Nombre*</label>
+            <div class="col-md-6">
+              <input type="text" name="name" value="<?php echo $patient->name; ?>" class="form-control" id="name" placeholder="Nombre">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">Sexo:*</label>
+            <div class="col-md-6">
+              <select id="sex" name="sex" class="form-control">
+                <option value="1" <?php echo ($patient->sex_id == 1) ? "selected" : "" ?>>Masculino</option>
+                <option value="2" <?php echo ($patient->sex_id == 2) ? "selected" : "" ?>>Femenino</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">CURP:</label>
+            <div class="col-md-6">
+              <input type="text" name="curp" value="<?php echo $patient->curp; ?>" class="form-control" id="curp" placeholder="CURP">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Nombre del familiar:</label>
+            <div class="col-md-6">
+              <input type="text" name="relative_name" value="<?php echo $patient->relative_name; ?>" class="form-control" id="relative_name" placeholder="Nombre del familiar" autofocus>
+            </div>
+          </div>
 
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Teléfonos:</label>
-        <div class="col-lg-2">
-          <input type="text" id="tel" name="tel" value="<?php echo $patient->tel; ?>" class="form-control" id="tel" placeholder="Teléfono">
-        </div>
-        <div class="col-lg-2">
-          <input type="text" id="tel2" name="tel2" value="<?php echo $patient->tel2; ?>" class="form-control" id="tel" placeholder="Tel alternativo">
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Email:</label>
-        <div class="col-md-6">
-          <input type="text" id="email" name="email" value="<?php echo $patient->email; ?>" class="form-control" id="email1" placeholder="Email">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Fecha nacimiento</label>
-        <div class="col-lg-1">
-          <select name="birthday_day" id="birthday_day" class="form-control" onchange="calculatePatientBirthday();">
-            <?php for ($i = 01; $i <= 31; $i++) : ?>
-              <option value="<?php echo $i; ?>" <?php echo ($birthdayDay == $i) ? "selected" : "" ?>><?php echo $i ?></option>
-            <?php endfor; ?>
-          </select>
-        </div>
-        <div class="col-lg-2">
-          <select name="birthday_month" id="birthday_month" class="form-control" onchange="calculatePatientBirthday();">
-            <?php
-            $months = ["01" => "Enero", "02" => "Febrero", "03" => "Marzo", "04" => "Abril", "05" => "Mayo", "06" => "Junio", "07" => "Julio", "08" => "Agosto", "09" => "Septiembre", "10" => "Octubre", "11" => "Noviembre", "12" => "Diciembre"];
-            foreach ($months as $index => $month) : ?>
-              <option value="<?php echo $index; ?>" <?php echo ($birthdayMonth == $index) ? "selected" : "" ?>><?php echo $month ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="col-lg-2">
-          <select name="birthday_year" id="birthday_year" class="form-control" onchange="calculatePatientBirthday();">
-            <?php for ($k = date("Y"); $k >= 1930; $k--) : ?>
-              <option value="<?php echo $k; ?>" <?php echo ($birthdayYear == $k) ? "selected" : "" ?>><?php echo $k ?></option>
-            <?php endfor; ?>
-          </select>
-        </div>
-        <input type="hidden" name="birthday" id="birthday">
-      </div>
-      <hr>
-      <div class="form-group">
-        <div class="col-lg-offset-2 col-lg-10">
-          <div class="checkbox">
-            <label>
-              <input name="isRelativeRegistered" id="isRelativeRegistered" type="checkbox" value="1" <?php echo ($patient->relative_id != "" && $patient->relative_id != 0) ? "checked" : "" ?>> Tiene pareja registrada
-            </label>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">Dirección:</label>
+            <div class="col-lg-3">
+              <input type="text" id="street" name="street" value="<?php echo $patient->street; ?>" class="form-control" placeholder="Calle">
+            </div>
+            <div class="col-lg-1">
+              <input type="text" id="number" name="number" value="<?php echo $patient->number; ?>" class="form-control" placeholder="Número">
+            </div>
+            <div class="col-lg-2">
+              <input type="text" id="colony" name="colony" value="<?php echo $patient->colony; ?>" class="form-control" placeholder="Colonia">
+            </div>
           </div>
-        </div>
-      </div>
-      <div class="form-group" id="divRelativeId">
-        <label for="inputEmail1" class="col-lg-2 control-label">Pareja registrada:</label>
-        <div class="col-lg-6">
-          <select name="relativeId" id="relativeId" class="form-control" id="combobox">
-            <option value="">-- SELECCIONE -- </option>
-            <?php foreach ($patients as $relativePatient) : ?>
-              <option value="<?php echo $relativePatient->id; ?>" <?php echo ($relativePatient->id == $patient->relative_id) ? "selected" : "" ?>><?php echo $relativePatient->id . " - " . $relativePatient->name ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-      </div>
-      <div id="divRelativeName">
-        <div class="form-group">
-          <label for="inputEmail1" class="col-lg-2 control-label">Nombre de la pareja:</label>
-          <div class="col-md-6">
-            <input type="text" name="relativeName" value="<?php echo $patient->relative_name; ?>" class="form-control" id="relativeName" placeholder="Nombre de la pareja" autofocus>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label"></label>
+            <div class="col-lg-3">
+              <select id="countyId" name="countyId" class="form-control" required>
+                <option value="0">--Seleccionar municipio --</option>
+                <?php foreach ($counties as $county) : ?>
+                  <option value="<?php echo $county->id; ?>" <?php echo ($county->id == $patient->county_id) ? "selected" : "" ?>><?php echo $county->name; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
           </div>
-        </div>
-        <div class="form-group">
-          <label for="" class="col-lg-2 control-label">Dato oficial de la pareja:</label>
-          <div class="col-lg-2">
-            <select name="relativeOfficialDocumentId" id="relativeOfficialDocumentId" class="form-control">
-              <?php foreach ($officialDocuments as $officialDocument) : ?>
-                <option value="<?php echo $officialDocument->id ?>" <?php echo ($officialDocument->id == $patient->relative_official_document_id) ? "selected" : "" ?>><?php echo $officialDocument->name ?></option>
-              <?php endforeach; ?>
-            </select>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">Teléfonos:</label>
+            <div class="col-lg-2">
+              <input type="number" id="cellphone" name="cellphone" value="<?php echo $patient->cellphone; ?>" class="form-control" placeholder="Celular">
+            </div>
+            <div class="col-lg-2">
+              <input type="number" id="homephone" name="homephone" value="<?php echo $patient->homephone; ?>" class="form-control" placeholder="Teléfono fijo">
+            </div>
           </div>
-          <div class="col-md-4">
-            <input type="text" id="relativeOfficialDocumentValue" name="relativeOfficialDocumentValue" value="<?php echo $patient->relative_official_document_value; ?>" class="form-control" placeholder="Dato oficial">
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">Email:</label>
+            <div class="col-md-6">
+              <input type="text" id="email" name="email" value="<?php echo $patient->email; ?>" class="form-control" placeholder="Email">
+            </div>
           </div>
-        </div>
-        <div class="form-group">
-          <label for="" class="col-lg-2 control-label">Fecha nacimiento pareja:</label>
-          <div class="col-lg-1">
-            <select name="birthday_day" id="relativeBirthdayDay" class="form-control" onchange="calculateRelativeBirthday();">
-              <?php for ($i = 01; $i <= 31; $i++) : ?>
-                <option value="<?php echo $i; ?>" <?php echo ($relativeBirthdayDay == $i) ? "selected" : "" ?>><?php echo $i ?></option>
-              <?php endfor; ?>
-            </select>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">Fecha nacimiento:</label>
+            <div class="col-lg-6">
+              <input type="date" name="birthday" id="birthday" value="<?php echo $patient->birthday; ?>" class="form-control">
+            </div>
           </div>
-          <div class="col-lg-2">
-            <select name="birthday_month" id="relativeBirthdayMonth" class="form-control" onchange="calculateRelativeBirthday();">
-              <?php
-              $months = ["01" => "Enero", "02" => "Febrero", "03" => "Marzo", "04" => "Abril", "05" => "Mayo", "06" => "Junio", "07" => "Julio", "08" => "Agosto", "09" => "Septiembre", "10" => "Octubre", "11" => "Noviembre", "12" => "Diciembre"];
-              foreach ($months as $index => $month) : ?>
-                <option value="<?php echo $index; ?>" <?php echo ($relativeBirthdayMonth == $index) ? "selected" : "" ?>><?php echo $month ?></option>
-              <?php endforeach; ?>
-            </select>
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Nivel Educativo</label>
+            <div class="col-md-6">
+              <select id="educationLevelId" name="educationLevelId" class="form-control" required>
+                <?php foreach ($educationLevels as $educationLevel) : ?>
+                  <option value="<?php echo $educationLevel->id; ?>" <?php echo ($educationLevel->id == $patient->education_level_id) ? "selected" : "" ?>><?php echo $educationLevel->name; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
           </div>
-          <div class="col-lg-2">
-            <select name="birthday_year" id="relativeBirthdayYear" class="form-control" onchange="calculateRelativeBirthday();">
-              <?php for ($k = date("Y"); $k >= 1930; $k--) : ?>
-                <option value="<?php echo $k; ?>" <?php echo ($relativeBirthdayYear == $k) ? "selected" : "" ?>><?php echo $k ?></option>
-              <?php endfor; ?>
-            </select>
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Ocupación:</label>
+            <div class="col-md-8">
+              <input type="text" name="occupation" value="<?php echo $patient->occupation; ?>" required class="form-control" id="occupation" placeholder="Ocupación" autofocus>
+            </div>
           </div>
-          <input type="hidden" name="relativeBirthday" id="relativeBirthday">
-        </div>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">Referido por:*</label>
+            <div class="col-md-6">
+              <input type="text" id="referred_by" name="referred_by" value="<?php echo $patient->referred_by; ?>" class="form-control" id="email1" placeholder="Referido por">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="" class="col-lg-2 control-label">Categoría</label>
+            <div class="col-md-6">
+              <select id="category_id" name="category_id" class="form-control" disabled>
+                <option value="">-- SELECCIONE --</option>
+                <?php foreach ($categories as $category) : ?>
+                  <option value="<?php echo $category->id; ?>" <?php echo ($patient->category_id == $category->id) ? "selected" : ""; ?>>
+                    <?php echo $category->name; ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="inputEmail1" class="col-lg-2 control-label">Observaciones:</label>
+            <div class="col-md-8">
+              <textarea name="observations" class="form-control" id="observations" rows="7"><?php echo $patient->observations ?></textarea>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-offset-2 col-lg-10">
+              <input type="hidden" id="user_id" name="user_id" value="<?php echo $patient->id; ?>">
+              <button type="button" class="btn btn-primary" id="updatePatient">Actualizar Paciente</button>
+            </div>
+          </div>
+        </form>
       </div>
-      <hr>
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Referida por:*</label>
-        <div class="col-md-6">
-          <input type="text" id="ref" name="ref" value="<?php echo $patient->ref; ?>" class="form-control" id="email1" placeholder="Referida por">
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="" class="col-lg-2 control-label">Estatus</label>
-        <div class="col-md-6">
-          <select id="estatus" name="estatus" class="form-control">
-            <option value="">-- SELECCIONE --</option>
-            <?php foreach ($est as $use) : ?>
-              <option value="<?php echo $use->id; ?>" <?php if ($patient->status == $use->id) {
-                                                        echo "selected";
-                                                      } ?>><?php echo $use->nombre; ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <div class="col-lg-offset-2 col-lg-10">
-          <input type="hidden" id="patientId" name="patientId" value="<?php echo $patient->id; ?>">
-          <button type="button" class="btn btn-primary" id="updatePatient">Actualizar Paciente</button>
-        </div>
-      </div>
-    </form>
+    </div>
   </div>
 </div>
 </div>
 </div>
 
-<script type="text/javascript">
-  function agregarfecha() {
-    var d = new Date();
-    var n = d.toISOString().slice(0, 10).split("-").join("/");
-    var day = n.slice(8, 10);
-    var month = n.slice(5, 7);
-    var year = n.slice(0, 4);
-    calculatePatientBirthday();
-  }
-
-  function calculatePatientBirthday() {
-    let day = $('#birthday_day').val();
-    let month = $('#birthday_month').val();
-    let year = $('#birthday_year').val();
-
-    $('#birthday').val(year + "/" + month + "/" + day);
-  }
-
-  function calculateRelativeBirthday() {
-    let day = $('#relativeBirthdayDay').val();
-    let month = $('#relativeBirthdayMonth').val();
-    let year = $('#relativeBirthdayYear').val();
-
-    $('#relativeBirthday').val(year + "/" + month + "/" + day);
-  }
-
+<script>
   $(document).ready(function() {
-    $("#relativeId").select2({});
-
-    if ($('#isRelativeRegistered').prop('checked') == true) {
-      $("#divRelativeName").hide();
-      $("#divRelativeId").show();
-    } else {
-      $("#divRelativeName").show();
-      $("#divRelativeId").hide();
-    }
-
-    $("#isRelative").prop("checked", true);
+    $("#medicId").select2({});
+    $("#countyId").select2({});
 
     var image = "<?php echo $patient->image ?>";
     var url_image = 'storage_data/patients/' + image;
@@ -320,83 +241,68 @@ $officialDocuments = OfficialDocumentData::getAll();
     });
 
     $('#updatePatient').click(function(event) {
-      calculateRelativeBirthday();
-      calculatePatientBirthday();
-      var patientId = $("#patientId").val();
       var name = $("#name").val();
-      var sexId = $("#sexId").val();
-      var officialDocumentId = $("#officialDocumentId").val();
-      var officialDocumentValue = $("#officialDocumentValue").val();
-      var relativeId = $("#relativeId").val();
-      var relativeName = $("#relativeName").val();
-      var relativeOfficialDocumentId = $("#relativeOfficialDocumentId").val();
-      var relativeOfficialDocumentValue = $("#relativeOfficialDocumentValue").val();
-      var calle = $("#calle").val();
-      var num = $("#num").val();
-      var col = $("#col").val();
-      var tel = $("#tel").val();
-      var tel2 = $("#tel2").val();
-      var email = $("#email").val();
-      var ref = $("#ref").val();
-      var estatus = $("#estatus").val();
-      var birthday = $('#birthday').val();
-      var relativeBirthday = $('#relativeBirthday').val();
+      var sex = $("#sex").val();
+      var street = $("#street").val();
+      var number = $("#number").val();
+      var colony = $("#colony").val();
+      var cellphone = $("#cellphone").val();
+      var homephone = $("#homephone").val();
+      var branchOfficeId = $("#branchOfficeId").val();
 
-      if (name && sexId && patientId != relativeId) {
-        if ($('#isRelativeRegistered').prop('checked') == false || ($('#isRelativeRegistered').prop('checked') == true && relativeId != null && relativeId != "")) {
-          $image_crop.croppie('result', {
-            type: 'canvas',
-            size: 'viewport'
-          }).then(function(response) {
-            var image = response;
-            $.ajax({
-              url: "./?action=patients/update",
-              type: 'POST',
-              data: {
-                "patientId": patientId,
-                "name": name,
-                "sexId": sexId,
-                "officialDocumentId": officialDocumentId,
-                "officialDocumentValue": officialDocumentValue,
-                "isRelativeRegistered": $('#isRelativeRegistered').prop('checked'),
-                "relativeId": relativeId,
-                "relativeName": relativeName,
-                "relativeOfficialDocumentId": relativeOfficialDocumentId,
-                "relativeOfficialDocumentValue": relativeOfficialDocumentValue,
-                "calle": calle,
-                "num": num,
-                "col": col,
-                "tel": tel,
-                "tel2": tel2,
-                "email": email,
-                "birthday": birthday,
-                "relativeBirthday": relativeBirthday,
-                "ref": ref,
-                "estatus": estatus,
-                "image": image
-              },
-              success: function(data, textStatus, xhr) {
-                window.location = "index.php?view=patients/index";
-              },
-              error: function() {
-                alert("Ha ocurrido un error al almacenar los datos");
-              }
-            });
-          });
-        } else {
-          Swal.fire(
-            '¡Oops!',
-            'Selecciona la pareja del paciente.',
-            'error'
-          );
-        }
-      } else {
+      if (!branchOfficeId || !name || !sex || !cellphone || (cellphone && cellphone.length != 10) || (homephone && homephone.length != 10)) {
         Swal.fire(
-          '¡Oops!',
-          'Ingresa los datos requeridos del paciente.',
-          'error'
+          'Advertencia',
+          'Captura los datos obligatorios: SUCURSAL,NOMBRE,SEXO Y TELÉFONOS (10 DÍGITOS)',
+          'wanring'
         );
+      } else {
+        $image_crop.croppie('result', {
+          type: 'canvas',
+          size: 'viewport'
+        }).then(function(response) {
+          var image = response;
+          $.ajax({
+            url: "./?action=patients/update",
+            type: 'POST',
+            data: {
+              "user_id": $("#user_id").val(),
+              "name": name,
+              "sex": sex,
+              "curp": $("#curp").val(),
+              "relative_name": $("#relative_name").val(),
+              "street": street,
+              "number": number,
+              "colony": colony,
+              "cellphone": cellphone,
+              "homephone": homephone,
+              "birthday": $("#birthday").val(),
+              "email": $("#email").val(),
+              "referred_by": $("#referred_by").val(),
+              "category_id": $("#category_id").val(),
+              "branchOfficeId": branchOfficeId,
+              "countyId": $("#countyId").val(),
+              "companyId": $("#companyId").val(),
+              "observations": $("#observations").val(),
+              "educationLevelId": $("#educationLevelId").val(),
+              "occupation": $("#occupation").val(),
+              "image": image
+            },
+            success: function(data, textStatus, xhr) {
+              window.location = "index.php?view=patients/index";
+            },
+            error: function() {
+              Swal.fire(
+                'Error',
+                'No se ha registrado el paciente.',
+                'error'
+              );
+            }
+          });
+
+        });
       }
+
     });
 
     $("#reset_image").click(function() {
@@ -412,16 +318,5 @@ $officialDocuments = OfficialDocumentData::getAll();
       });
     });
 
-  });
-
-  $("#isRelativeRegistered").change(function() {
-    if (this.checked) {
-      //Se se va a seleccionar una pareja que es paciente registrado 
-      $("#divRelativeName").hide();
-      $("#divRelativeId").show();
-    } else {
-      $("#divRelativeName").show();
-      $("#divRelativeId").hide();
-    }
   });
 </script>

@@ -1,53 +1,79 @@
 <?php
-if(count($_POST)>0){
-	 $op = new OperationData();
+//Obtener configuración para validar si se agregará una comisión automática cada vez que se registre un pago de tarjeta
+$configuration = ConfigurationData::getAll();
+$isCardCommission = $configuration["active_card_commission"];
+$totalCardCommission = (isset($configuration["card_commission_value"]) ? $configuration["card_commission_value"] : 0);
+$operation = OperationData::getById($_POST["saleId"]);
 
-  $op->idType = $_POST["idTypePay"] ;
-  $op->sell_id=$_POST["idSell"];
-  $op->fecha = $_POST["date"];
-  $op->bank_account_id = $_POST["bankAccountId"];
-  $op->is_invoice = $_POST["isInvoice"];
+if (count($_POST) > 0) {
+  $totalSale = floatval($_POST["totalSale"]);
+  $totalPayment = floatval($_POST["totalPayment"]);
+  $actualPayment = $totalPayment + floatval($_POST["total"]);
 
-  /*if($_POST["idTypePay"]==2 || $_POST["idTypePay"]==3){
-    $op->money=$_POST["money"]*1.015;
+  //Validar si la cantidad a pagar no supera el total de la venta
+  if($actualPayment <= $totalSale){
+    $paymentDetail = new OperationPaymentData();
+    $paymentDetail->payment_type_id = $_POST["paymentType"];
+    $paymentDetail->operation_id = $_POST["saleId"];
+    $paymentDetail->date = $_POST["date"]." ".date("H:i:s");
 
-    $cort= $_POST["money"] * 0.015;
-    $op1 = new OperationData();
-    $op1->product_id = 13;
-    $op1->operation_type_id=2; // 1 - entrada
-    $op1->sell_id= $_POST["idSell"];
-    $op1->q= "1";
-    $op1->price= $cort;
-    $op1->is_oficial = 1;
-    $op1->date = $_POST["date"];
-    
-    $add = $op1->addU();
-  }else
-  {
-    $op->money=$_POST["money"];
-  }*/
-  $op->money=$_POST["money"];
-  
-  $op = $op->addPay1();
-  $tot=$_POST["total1"];
-  $totalGen=$_POST["totalGen2"];
-    
-  $liq=$tot - $totalGen;
+    //Forma de pago en tarjeta se calcula el total a pagar + la comisión si en la configuración se estableció que se cobraría comisión
+    if ($isCardCommission && ($_POST["paymentType"] == 2 || $_POST["paymentType"] == 3)) {
+      $commissionPrice = $_POST["total"] * floatval($totalCardCommission);
+      $paymentDetail->total = $_POST["total"] + $commissionPrice;
 
-  if($liq==0){
-  $status = 1;
-  }else{
-  $status = 0;
+      $operationDetail = new OperationDetailData();
+      $operationDetail->product_id = 1; //Comisión
+      $operationDetail->operation_operation_type_id = 2; // 1 - entrada
+      $operationDetail->operation_id = $_POST["saleId"];
+      $operationDetail->quantity = "1";
+      $operationDetail->price = $commissionPrice;
+      $operationDetail->date = $_POST["date"]." ".date("H:i:s");
+      $add = $operationDetail->add();
+
+      //Ya que se agregó una nuevo producto a la venta se actualiza el total
+      $operation->total = $totalSale + $commissionPrice;
+      $operation->updateTotal();
+
+    } else {
+      $paymentDetail->total = $_POST["total"];
+    }
+    $paymentDetail = $paymentDetail->add();
+
+    //Validar si la venta se liquidó o no
+    $isLiquidated = $totalSale - $actualPayment;
+    if ($isLiquidated == 0) $statusId = 1;
+    else $statusId = 0;
+
+    //Actualizar datos de la venta (estatus y fecha de creación)
+    $operation->status_id = $statusId;
+    $operation->updateStatus();
+    $operation->created_at = $_POST["date"]." ".date("H:i:s");
+    $operation->updateDate();
+
+    //Actualizar la cita vinculada a la venta para que muestre el último estatus de la venta en el calendario
+    if($operation->reservation_id != 0){
+      ReservationData::updateLastSaleStatus($operation->reservation_id);
+    }
+
+    OperationDetailData::updateDate($_POST["saleId"], ($_POST["date"]." ".date("H:i:s")));
+
+		//Registrar log
+		$log = new LogData();
+		$log->row_id = $paymentDetail[1];
+		$log->branch_office_id = $operation->branch_office_id;
+		$log->user_id = $_SESSION["user_id"];
+		$log->module_id = 8;
+		$log->action_type_id = 1;
+		$log->description = "Se agregó un nuevo pago a la venta del paciente " . PatientData::getById($operation->patient_id)->name . " del día ".$operation->created_at .".";
+		$newLog = $log->add();
+
+    print "<script>window.location='index.php?view=sales/edit&id=" . $_POST["saleId"] . "';</script>";
   }
-  $op2 = new OperationData();
-  $upt = $op2->updatedateFac($_POST["idSell"],$_POST["date"],$_POST["total1"],$status); 
-
-
-  $op3 = new OperationData();
-  $upt2 = $op3->updatedateFacdet($_POST["idSell"],$_POST["date"]);  
-
-  print "<script>window.location='index.php?view=sales/edit&id=".$_POST["idSell"]."';</script>";
+  else{
+    echo '<script> 
+      alert("La cantidad pagada no puede superar el total de la venta.");
+      window.location="index.php?view=sales/edit&id=' . $_POST["saleId"] . '";
+    </script>';
+  }
 }
-
-
-?>

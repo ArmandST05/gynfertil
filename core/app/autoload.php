@@ -1,13 +1,15 @@
 <?php
 // autoload.php
 // 10 octubre del 2014
-// esta función elimina el hecho de estar agregando los modelos manualmente
+// esta funcion elimina el hecho de estar agregando los modelos manualmente
 
-function autoloadClass($modelname){
+function autoloadModel($modelname){
 	if(Model::exists($modelname)){
 		include Model::getFullPath($modelname);
 	} 
 
 }
-spl_autoload_register("autoloadClass");
+
+spl_autoload_register('autoloadModel');
+
 ?>

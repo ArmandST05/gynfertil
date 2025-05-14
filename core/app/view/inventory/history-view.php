@@ -1,7 +1,22 @@
 <?php
-if (isset($_GET["productId"])) :
-	$product = ProductData::getById($_GET["productId"]);
-	$operations = OperationData::getAllByProductId($product->id);
+if (isset($_GET["id"])) :
+	$product = ProductData::getById($_GET["id"]);
+	$operations = OperationDetailData::getAllByProductId($product->id);
+
+	$user = UserData::getLoggedIn();
+	$userType = (isset($user)) ? $user->user_type : null;
+
+	if ($userType == "r") {
+		$branchOfficeId = $user->getBranchOffice()->id;
+		$branchOffices = [$user->getBranchOffice()];
+	} else {
+		if ($userType == "co") {
+			$branchOfficeId = (isset($_GET["branchOfficeId"])) ? $_GET["branchOfficeId"] : $user->getBranchOffice()->id;
+		} else {
+			$branchOfficeId = (isset($_GET["branchOfficeId"])) ? $_GET["branchOfficeId"] : 0;
+		}
+		$branchOffices = BranchOfficeData::getAllByStatus(1);
+	}
 ?>
 	<div class="row">
 		<div class="col-md-12">
@@ -13,82 +28,83 @@ if (isset($_GET["productId"])) :
 
 	<div class="row">
 		<div class="col-md-4">
-			<?php $itotal = OperationData::GetInputQYesF($product->id); ?>
+			<?php
+			$totalInputs = OperationDetailData::getByOperationTypeBranchOfficeProduct($branchOfficeId, $product->id, 1);
+			?>
 			<div class="jumbotron">
 				<center>
 					<h2>Entradas</h2>
-					<h1><?php echo $itotal; ?></h1>
+					<h1><?php echo $totalInputs; ?></h1>
 				</center>
 			</div>
-
 			<br>
 		</div>
 
 		<div class="col-md-4">
-			<?php $total = OperationData::getStockByProduct($product->id); ?>
+			<?php
+			$totalStock = OperationDetailData::getStockByBranchOfficeProduct($branchOfficeId, $product->id);
+			?>
 			<div class="jumbotron">
 				<center>
 					<h2>Disponibles</h2>
-					<h1><?php echo $total; ?></h1>
+					<h1><?php echo $totalStock; ?></h1>
 				</center>
 			</div>
 			<div class="clearfix"></div>
 			<br>
+
 		</div>
 
 		<div class="col-md-4">
-			<?php $ototal = -1 * OperationData::GetOutputQYesF($product->id); ?>
+			<?php
+			$totalOutputs = -1 * OperationDetailData::getByOperationTypeBranchOfficeProduct($branchOfficeId, $product->id, 2);
+			?>
 			<div class="jumbotron">
 				<center>
 					<h2>Salidas</h2>
-					<h1><?php echo $ototal; ?></h1>
+					<h1><?php echo $totalOutputs; ?></h1>
 				</center>
 			</div>
+
+
 			<div class="clearfix"></div>
 			<br>
+			<?php
+			?>
+
 		</div>
 	</div>
 	<div class="row">
 		<div class="col-md-12">
 			<?php if (count($operations) > 0) : ?>
-				<table class="table table-bordered table-hover">
+				<table class="table table-bordered table-hover" id="dataTable">
 					<thead>
-						<th></th>
-						<th>Fecha registro</th>
 						<th>Cantidad</th>
 						<th>Tipo</th>
-						<th>Lote</th>
-						<th>Fecha expiración</th>
+						<th>Fecha</th>
 
 					</thead>
 					<?php foreach ($operations as $operation) : ?>
 						<tr>
-							<td>
-								<?php if (($_SESSION['typeUser'] == "su" || $_SESSION['typeUser'] == "sub") && $operation->operation_type_id == 1) : ?>
-									<a href="index.php?view=inventory/edit-input-medicine&id=<?php echo $product->id ?>" class="btn btn-xs btn-warning"><i class="glyphicon glyphicon-pencil"></i></a>
-									<a href="index.php?action=inventory/delete-input&id=<?php echo $product->id ?>" class="btn btn-xs btn-danger" onClick="return confirmDelete()"><i class="fa fa-trash"></i></a>
-								<?php endif; ?>
-							</td>
-							<td><?php echo $operation->fecha; ?></td>
-							<td><?php echo $operation->q; ?></td>
-							<td><?php echo strtoupper($operation->getOperationType()->name); ?></td>
-							<td><?php echo $operation->lot; ?></td>
-							<td><?php echo ($operation->operation_type_id == 1) ? $operation->expiration_date_format : ""; ?></td>
+							<td><?php echo $operation->quantity; ?></td>
+							<td><?php echo strToUpper($operation->getOperationType()->name); ?></td>
+							<td><?php echo $operation->date; ?></td>
 						</tr>
 					<?php endforeach; ?>
 				</table>
 			<?php endif; ?>
 		</div>
 	</div>
-	<script>
-		function confirmDelete() {
-			var flag = confirm("¿Seguro que deseas eliminar el producto? Esta acción no se puede revertir");
-			if (flag == true) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-	</script>
 
 <?php endif; ?>
+<script>
+	$(document).ready(function() {
+		var dataTable = $('#dataTable').DataTable({
+			pageLength: 50,
+			ordering: false,
+			language: {
+				url: 'plugins/datatables/languages/es-mx.json'
+			}
+		});
+	});
+</script>

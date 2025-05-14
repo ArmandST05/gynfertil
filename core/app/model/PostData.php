@@ -8,14 +8,15 @@ class PostData {
 	    $form->addField("content",array('type' => new lbInputText(array("label"=>"Apellido")),"validate"=>new lbValidator(array())));
 	    $form->addField("image",array('type' => new lbInputText(array()),"validate"=>new lbValidator(array())));
 	    return $form;
+
 	}
 
-	public function __construct(){
+	public function PostData(){
 		$this->title = "";
 		$this->content = "";
 		$this->image = "";
 		$this->theme_id = "";
-		$this->user_id = "";
+				$this->user_id = "";
 		$this->is_public = "0";
 		$this->created_at = "NOW()";
 	}

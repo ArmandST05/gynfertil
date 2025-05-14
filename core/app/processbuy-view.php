@@ -1,12 +1,12 @@
 <?php
 $process="true";
-if(isset($_SESSION["buy"])){
+if(isset($_SESSION["expense"])){
 	
-	$buy = $_SESSION["buy"];
+	$buy = $_SESSION["expense"];
 
 //////////////////////////////////
 		if($process==true){
-			$sell = new SellData();
+			$sell = new OperationData();
 			$sell->user_id = $_SESSION["user_id"];
 
 			$sell->total = $_POST["total"];
@@ -30,7 +30,7 @@ if(isset($_SESSION["buy"])){
 		foreach($buy as  $c){
 
 
-			 $op = new OperationData();
+			 $op = new OperationDetailData();
 
 			 $op->product_id = $c["idCon"] ;
 			 $op->operation_type_id=1; // 1 - entrada
@@ -41,17 +41,17 @@ if(isset($_SESSION["buy"])){
 			
              $add = $op->add_buy();		 		
 
-			unset($_SESSION["buy"]);
+			unset($_SESSION["expense"]);
 			setcookie("selled","selled");
 		}
 
-		if(isset($_SESSION["typePBuy"])){
-		 $pay = $_SESSION["typePBuy"];
+		if(isset($_SESSION["expensePaymentTypes"])){
+		 $pay = $_SESSION["expensePaymentTypes"];
 
 
 		 foreach($pay as  $p){
 
-			 $op = new OperationData();
+			 $op = new OperationDetailData();
 			 $op->idType = $p["idType"] ;
 			 $op->buyId=$s[1];
 			 $op->money= $p["money"];
@@ -60,7 +60,7 @@ if(isset($_SESSION["buy"])){
 
 			 $add = $op->addPayB();			 		
 
-			unset($_SESSION["typePBuy"]);
+			unset($_SESSION["expensePaymentTypes"]);
 			setcookie("selled","selled");
 		}
 	}

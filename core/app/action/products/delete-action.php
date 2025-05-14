@@ -1,12 +1,11 @@
 <?php
-$operations = OperationData::getAllByProductId($_GET["id"]);
+$operations = OperationDetailData::getAllByProductId($_GET["id"]);
 
-foreach ($operations as $op) {
-	$op->del();
+foreach ($operations as $operation) {
+	$operation->delete();
 }
-
 $product = ProductData::getById($_GET["id"]);
-$product->del();
+$product->delete();
 
-Core::redir("./index.php?view=inventory/index-medicines");
+Core::redir("./index.php?view=products/index");
 ?>

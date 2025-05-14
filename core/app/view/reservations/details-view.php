@@ -1,454 +1,1112 @@
 <?php
+$user = UserData::getLoggedIn();
+$userType = $user->user_type;
+
 $reservation = ReservationData::getById($_GET["id"]);
-$ti_user = isset($_SESSION["user_id"])  ? $_SESSION["user_id"] : null;
-$ti_usua = UserData::get_tipo_usuario1($ti_user);
-$patient_id = $_GET["id_paciente"];
+$reservationId = $reservation->id;
+$reservationStatus = ReservationStatusData::getAll();
 
-foreach ($ti_usua as $key) {
-  $tipo = $key->tipo_usuario;
-  $id_me = $key->id_me;
+if (!isset($reservation)) {
+    echo "<script> 
+          alert('La cita seleccionada no existe');
+          window.location.href = './?view=home';
+        </script>";
 }
-$patientNotes = ReservationData::get_resumen_detalle($patient_id);
-$reservationActualNote = ReservationData::get_primer_resumen_cita($patient_id, $reservation->medic_id, substr($reservation->date_at, 0, 10)); //Obtener la nota de la cita en caso de que exista,sólo primer resultado.
-
-//CONSULTA SI SON MÉDICOS REGISTRADOS COMO PACIENTES, Y REDIRECCIONA AL DETALLE DE LA CITA DOCTOR
-if ($patient_id == 2 || $patient_id == 1 || $patient_id == 2041 || $patient_id == 2042 || $patient_id == 2043 || $patient_id == 2044 || $patient_id == 2045) {
-  echo "<script> 
-            window.location.href = './?view=editreservationdoc&id=" . $_GET["id"] . "';
-          </script>";
-}
-$patients = PatientData::getAll_todo($patient_id);
-$patient = reset($patients);
-$tipo = $patient->tipo;
-$medics = MedicData::getAll();
-
-//DATOS OFICIALES DEL PACIENTE Y SU PAREJA
-$patientOfficialData = $patient->getPatientOfficialData(); //Cargar dato oficial del paciente (rfc,curp,pasaporte).
-
-//Si el paciente tiene una pareja registrada como paciente, obtener los datos de ahí, si no, los datos capturados.
-if ($patient->relative_id) {
-  $relative = PatientData::getById($patient->relative_id);
-  $relativeName = $relative->name;
-  $relativeBirthday = ($relative->birthday_format != "00/00/0000") ? $relative->getBirthdayFormat() : "No especificada";
-  $relativeAge = $relative->getAge();
-  $relativeOfficialData = $relative->getPatientOfficialData(); //Cargar dato oficial de pareja del paciente (rfc,curp,pasaporte).
-} else {
-  $relativeName = $patient->relative_name;
-  $relativeBirthday = ($patient->relative_birthday_format != "00/00/0000") ? $patient->getRelativeBirthdayFormat() : "No especificada";
-  $relativeAge = $patient->getRelativeAge();
-  $relativeOfficialData = $patient->getRelativeOfficialData(); //Cargar dato oficial de pareja del paciente (rfc,curp,pasaporte).
+if (!$reservation->patient_id) {
+    //Redireccionar agenda del doctor
+    echo "<script> 
+        window.location.href = './?view=reservations/edit-medic&id=" . $_GET["id"] . "';
+    </script>";
 }
 
-//CATEGORÍAS Y TRATAMIENTOS
-$categories = PatientCategoryData::getAllCategories();
-$treatments = PatientCategoryData::getAllTreatments();
-//Diagnósticos de tratamientos
-$treatmentDiagnostics = TreatmentDiagnosticData::getAll();
+$vitalSigns = ExplorationExamData::getAllByTypeReservation($reservationId, 1);
+$vitalSignsArray = array_chunk($vitalSigns, 2);
+$physicalExams = ExplorationExamData::getAllByTypeReservation($reservationId, 2);
+$topographicalExams = ExplorationExamData::getAllByTypeReservation($reservationId, 3);
+$reservationDiagnostics = DiagnosticData::getAllByReservationId($reservationId);
+$reservationMedicines = MedicineData::getAllByReservationId($reservationId);
+$reservationTreatment = TreatmentData::getPatientTreatmentByDates($reservation->patient_id, substr($reservation->date_at, 0, 10), substr($reservation->date_at_final, 0, 10));
 
-$patientCategoryDetail = PatientCategoryData::getPatientCategoryDetail($patient_id);
-$patientCategoryId = (isset($patientCategoryDetail)) ? $patientCategoryDetail->patient_category_id : 0; //Categoría
-$patientTreatmentId = (isset($patientCategoryDetail)) ? $patientCategoryDetail->patient_treatment_id : 0; //Tratamiento
-$categoryTreatmentId = (isset($patientCategoryDetail)) ? $patientCategoryDetail->id : 0; //Registro de categoría/tratamiento del paciente
-$categoryTreatmentStatus = (isset($patientCategoryDetail)) ? $patientCategoryDetail->treatment_status_id : 0; ////Estatus de categoría/tratamiento del paciente
-$isTreatmentPregnancyTest = (isset($patientCategoryDetail)) ? $patientCategoryDetail->is_pregnancy_test : 0; //Validar si el tratamiento requiere realizar una prueba de embarazo al finalizar
-$categoryPregnancyTestDate = (isset($patientCategoryDetail)) ? $patientCategoryDetail->pregnancy_test_date : 0;
-$treatmentLocationId = (isset($patientCategoryDetail)) ? $patientCategoryDetail->treatment_location_id : 1;
-$patientPregnancyDetail = PatientPregnancyData::getByPatientId($patient_id);
+$reservationNumberData = ReservationData::getTotalReservationsByPatientDates($reservation->patient_id, substr($reservationTreatment->start_date, 0, 10) . " 00:00:00", substr($reservation->date_at_final, 0, 10) . " 23:59:59", 2);
+$reservationNumber = ($reservationNumberData && $reservationNumberData->total > 0) ? $reservationNumberData->total : 1;
+$patient = $reservation->getPatient();
+$files = PatientData::getAllFilesByPatientReservation($patient->id, $reservationId);
+$months = ["01" => "Enero", "02" => "Febrero", "03" => "Marzo", "04" => "Abril", "05" => "Mayo", "06" => "Junio", "07" => "Julio", "08" => "Agosto", "09" => "Septiembre", "10" => "Octubre", "11" => "Noviembre", "12" => "Diciembre"];
+$reservationDateFormat = substr($reservation->date_at, 8, 2) . "/" . $months[substr($reservation->date_at, 5, 2)] . "/" . substr($reservation->date_at, 0, 4);
+
+$inputStatus = ($userType == "su" || (substr($reservation->date_at, 0, 10) >= date("Y-m-d"))) ? "" : "disabled";
 ?>
-<!-- ACCIONES PARA CATEGORÍAS/TRATAMIENTOS/EMBARAZO-->
-<script src="core/app/view/patientCategoryScript.js" type="text/javascript"></script>
+<style>
+    .select2-container {
+        z-index: 99999999999999;
+    }
+</style>
 <div class="row">
-  <div class="col-md-12">
-    <!-- /.box -->
-    <div class="box box-primary">
-      <div class="box-header with-border">
-        <h3 class="box-title">Datos del Paciente</h3>
-      </div>
-      <!-- /.box-header -->
-      <div class="box-body">
-        <div class="col-md-3">
-          <img class="profile-user-img img-responsive img-circle" src='<?php echo ($patient->image) ? "storage_data/patients/" . $patient->image : "../../../assets/default_user.jpg" ?>' alt="Foto del paciente">
+    <input type="hidden" id="reservationId" value="<?php echo $reservationId ?>">
+    <input type="hidden" id="patientId" value="<?php echo $patient->id ?>">
+    <div class="col-md-12">
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Datos del Paciente</h3>
+                <div class="pull-right">
+                    <a target="_blank" href='./?view=patients/medical-record&patientId=<?php echo $reservation->patient_id ?>' class='btn btn-default btn-xs'><i class="fas fa-file-alt"></i> Expediente del paciente</a>
+                </div>
+            </div>
+            <!-- /.box-header -->
+            <div class="box-body">
+                <div class="col-md-3">
+                    <img class="profile-user-img img-responsive img-circle" src='<?php echo ($patient->image) ? "storage_data/patients/" . $patient->image : "../../../assets/default_user.jpg" ?>' alt="Foto del paciente">
+                </div>
+                <div class="col-md-9">
+                    <b>Nombre completo: </b><?php echo $patient->name ?><br>
+                    <?php if ($userType != "do") : ?>
+                        <b>Dirección: </b><?php echo $patient->street ?> <?php echo $patient->number ?>
+                        <?php echo $patient->colony ?><br>
+                        <b>Teléfono: </b><?php echo $patient->cellphone ?> <br><b>Teléfono alternativo:
+                        </b><?php echo $patient->homephone ?><br>
+                        <b>Email: </b><?php echo $patient->email ?><br>
+                        <b>Fecha nacimiento: </b><?php echo $patient->getBirthdayFormat() ?><br>
+                        <b>Edad: </b><?php echo $patient->getAge() ?><br>
+                        <b>Referido: </b><?php echo $patient->referred_by ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <!-- /.box-body -->
         </div>
-        <div class="col-md-5">
-          <?php
-          echo "<b>Nombre completo: </b>" . $patient->name . "<br>";
-          echo "<b>" . $patientOfficialData->name . ": </b>" . $patientOfficialData->value . "<br>";
-          echo "<b>Fecha nacimiento: </b>" . $patient->getBirthdayFormat() . "<br>";
-          echo "<b>Edad: </b>" . $patient->getAge() . "<br>";
-          echo "<b>Dirección: </b>" . $patient->calle . " " . $patient->num . " " . $patient->col . "<br>";
-          echo "<b>Teléfono: </b>" . $patient->tel . " <br><b>Teléfono alternativo: </b>" . $patient->tel2 . "<br>";
-          echo "<b>Email: </b>" . $patient->email . "<br>";
-          echo "<b>Referida: </b>" . $patient->ref . "<br>";
-          ?>
+
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Datos de la Cita</h3>
+                <div class="pull-right">
+                    <?php if ($userType != "do") : ?>
+                        <a href='./?view=sales/new-details&reservationId=<?php echo $_GET["id"] ?>&patientId=<?php echo $reservation->patient_id ?>&medicId=<?php echo $reservation->medic_id; ?>&date=<?php echo $reservation->date_at; ?>' class='btn btn-primary btn-xs'><i class="fas fa-dollar-sign"></i> Realizar Venta</a>
+                    <?php endif; ?>
+                    <?php if ($userType == "su" || ($userType != "do" && substr($reservation->date_at, 0, 10) >= date("Y-m-d"))) : ?>
+                        <a href='./?view=reservations/new-patient&reservationId=<?php echo $_GET["id"] ?>' class='btn btn-default btn-xs'><i class="fas fa-calendar"></i> Reagendar</a>
+                        <a href='./?view=reservations/edit-patient&id=<?php echo $reservation->id ?>' class='btn btn-warning btn-xs'><i class="fas fa-pencil-alt"></i> Editar</a>
+                        <!--<button id="btnCancelReservation" class='btn btn-secondary btn-xs'><i class="fas fa-ban"></i>Cancelar</button>-->
+                        <button id="btnDeleteReservation" class='btn btn-danger btn-xs'><i class="fas fa-trash"></i> Eliminar</button>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <!-- /.box-header -->
+            <div class="box-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <b>No. Sesión: </b><?php echo $reservationNumber ?>
+                    </div>
+                    <div class="col-md-3">
+                        <b>Fecha: </b><?php echo $reservationDateFormat; ?>
+                    </div>
+                    <div class="col-md-3">
+                        <b>Hora: </b><?php echo $reservation->getStartTime() . " - " . $reservation->getEndTime()  ?>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="inputEmail1">Estatus:</label>
+                        <label id="reservation_status_name"><?php echo $reservation->getStatus()->name ?></label>
+                        <input type="hidden" id="status_id" value="<?php echo $reservation->status_id ?>"></input>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <b>Psicólogo: </b><?php echo $reservationTreatment->getMedic()->name ?>
+                    </div>
+                    <div class="col-md-3">
+                        <b>Cédula: </b><?php echo $reservationTreatment->getMedic()->professional_license ?>
+                    </div>
+                    <div class="col-md-3">
+                        <b>Atendido por: </b><?php echo $reservation->getMedic()->name ?>
+                    </div>
+                    <div class="col-md-3">
+                        <b>Cédula: </b><?php echo $reservation->getMedic()->professional_license ?>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <b>Área: </b><?php echo $reservation->getArea()->name  ?>
+                    </div>
+                    <div class="col-md-3">
+                        <b>Categoría: </b><?php echo $reservation->getCategory()->name; ?>
+                    </div>
+                    <div class="col-md-3">
+                        <b>Consultorio: </b><?php echo $reservation->getLaboratory()->name ?>
+                    </div>
+                </div>
+                <br>
+                <div class="row">
+                    <div class="col-md-12">
+                        <label for="inputEmail1">Tema o Motivo de la Consulta:</label>
+                        <textarea class="form-control" id="reason" name="reason" placeholder="Motivo de la Consulta" required <?php echo $inputStatus; ?>><?php echo $reservation->reason; ?></textarea>
+                    </div>
+                </div>
+                <?php if ($userType != "do") : ?>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="inputEmail1" class="col-md-3 control-label">Asistencia:</label>
+                            <select name="statusReservation" id="statusReservation" class="form-control" onchange="selectReservationStatus()" autofocus required <?php echo $inputStatus; ?>>
+                                <?php foreach ($reservationStatus as $status) : ?>
+                                    <option value="<?php echo $status->id; ?>" <?php echo ($reservation->status_id == $status->id) ? "selected" : "" ?>><?php echo $status->name ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <?php if ($userType != "do") : ?>
+                            <div class="col-md-4">
+                                <br>
+                                <label><input type="checkbox" name="patientNotified" id="patientNotified" value="1" onchange="selectPatientNotified()" <?php echo ($reservation->is_patient_notified == 1) ? "checked" : "" ?>> Recordatorio a paciente</label>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+
+                <br>
+                <?php if ($reservation->status_id != 2 && ($userType == "su" || $userType == "do")) : ?>
+                    <div class="row">
+                        <div class="col-md-2 pull-right">
+                            <button id="btnStartConsultation" onclick="updateReservationStatus(2)" class='btn btn-primary btn-xs'>Comenzar Consulta <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
-        <div class="col-md-4">
-          <?php
-          echo "<b>Nombre pareja: </b>" . $relativeName . "<br>";
-          echo "<b>" . $relativeOfficialData->name . ": </b>" . $relativeOfficialData->value . "<br>";
-          echo "<b>Fecha nacimiento: </b>" . $relativeBirthday . "<br>";
-          echo "<b>Edad: </b>" . $relativeAge . "<br>";
-          ?>
-        </div>
-      </div>
-      <!-- /.box-body -->
-    </div>
-    <div class="box box-primary">
-      <div class="box-header with-border">
-        <h3 class="box-title">Datos de la Cita</h3>
-        <div class="pull-right">
-          <a href='./?action=deletereser&id=<?php echo $_GET["id"] ?>' class='btn btn-danger btn-xs' onClick='return confirmar();'><i class="fas fa-trash"></i> Eliminar cita</a>
-          <a href='./?view=sales/new-details&idRes=<?php echo $_GET["id"] ?>&id_paciente=<?php echo $patient_id ?>&idMed=<?php echo $reservation->medic_id; ?>&fecha=<?php echo $reservation->date_at; ?>' class='btn btn-primary btn-xs'><i class="fas fa-dollar-sign"></i> Realizar Venta</a>
-        </div>
-      </div>
-      <!-- /.box-header -->
-      <div class="box-body">
-        <div class="row">
-          <div class="col-md-12">
-            <b>Fecha Cita: </b><?php echo $reservation->getReservationDateFormat(); ?><br>
-            <b>Doctor: </b><?php echo $reservation->medic_name ?><br>
-            <b>Hora: </b><?php echo $reservation->time_at ?><br>
-            <b>Nota: </b><?php echo $reservation->note ?><br>
-            <b>Datos: </b><?php echo $reservation->datos ?>
-          </div>
-        </div>
-        <!-- Mostrar categorías y tratamientos para pacientes MUJERES-->
-        <?php if ($patient->sex_id == 1) : ?>
-          <hr>
-          <div class="row">
-            <div class="col-md-4">
-              <div class="form-group">
-                <label for="inputEmail1">Categoría</label>
-                <select class="form-control" id="patientCategory" <?php echo ($patientCategoryId == 3) ? 'disabled' : '' ?> onchange="selectCategory()">
-                  <option value="0" <?php echo ($patientCategoryId == 0) ? 'selected' : '' ?>>NO CLASIFICADO</option>
-                  <?php foreach ($categories as $category) : ?>
-                    <option value="<?php echo $category->id ?>" <?php echo ($patientCategoryId == $category->id) ? 'selected' : '' ?>><?php echo $category->name ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-            </div>
-            <div class="col-md-6" id="divPatientTreatment">
-              <div class="form-group">
-                <label for="inputEmail1">Tratamiento</label>
-                <select class="form-control" id="patientTreatment" <?php echo ($patientCategoryId == 3) ? 'disabled' : '' ?>>
-                  <?php foreach ($treatments as $treatment) : ?>
-                    <option value="<?php echo $treatment->id ?>" <?php echo ($patientTreatmentId == $treatment->id) ? 'selected' : '' ?>><?php echo "(" . $treatment->code . ") " . $treatment->name ?></option>
-                  <?php endforeach; ?>
-                </select>
-              </div>
-              <?php if ($patient->fecha_na == "" || $patient->fecha_na == "0000-00-00") : ?>
-                <div class="callout callout-info">
-                  <p>Es necesario que el paciente tenga registrada su fecha de nacimiento. Afectará los reportes de tratamientos.</p>
+        <?php if ($userType == "su" || $userType == "do") : ?>
+            <div id="medicalConsultationDetails">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(S) Subjetivo - Observaciones del paciente</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <textarea class="form-control" id="patientObservations" name="patientObservations" placeholder="Observaciones del paciente"><?php echo $reservation->patient_observations; ?></textarea>
+                    </div>
                 </div>
-              <?php endif; ?>
-            </div>
-            <div id="divPatientTreatmentDiagnostic">
-              <div class="col-md-5">
-                <div class="form-group">
-                  <label for="inputEmail1">Diagnóstico</label>
-                  <select class="form-control" id="patientTreatmentDiagnostic">
-                    <?php foreach ($treatmentDiagnostics as $diagnostic) : ?>
-                      <option value="<?php echo $diagnostic->id ?>"><?php echo $diagnostic->name ?></option>
-                    <?php endforeach; ?>
-                  </select>
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(O) Objetivo - Signos Vitales</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <?php foreach ($vitalSignsArray as $vitalSigns) : ?>
+                            <div class="row">
+                                <?php foreach ($vitalSigns as $vitalSign) : ?>
+                                    <div class="col-md-3">
+                                        <?php echo $vitalSign->name ?>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="text" class="form-control" id="explorationExam<?php echo $vitalSign->id ?>" value="<?php echo $vitalSign->value ?>" placeholder="<?php echo $vitalSign->name ?>" onkeyup="updateVitalSign('<?php echo $vitalSign->id ?>')" autofocus>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
-              </div>
-              <div class="col-md-5" id="divPatientTreatmentDiagnosticOther">
-                <div class="form-group">
-                  <label for="inputEmail1">Otro diagnóstico:</label>
-                  <input type="text" class="form-control" id="patientTreatmentDiagnosticOther">
+
+                <div class="box box-details box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(O) Objetivo - Examen Físico</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse">
+                                <i class="fa fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-lg-10">
+                                <select name="physicalExam" id="physicalExam" class="form-control" id="combobox" autofocus required onchange="addPhysicalExam()">
+                                    <option value="" disabled selected>-- SELECCIONE -- </option>
+                                    <?php foreach ($physicalExams as $physicalExam) : ?>
+                                        <option value="<?php echo $physicalExam->id; ?>"><?php echo $physicalExam->name ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="row" id="divPhysicalExamsDetail">
+
+                        </div>
+                    </div>
                 </div>
-              </div>
-            </div>
-            <div class="col-md-5" id="divPatientTreatmentLocation">
-              <label for="inputEmail1"> Ubicación: <button class="btn btn-danger btn-xs"><i class="fas fa-exclamation"></i> Importante</button></label>
-              <div class="form-group">
-                <div class="radio">
-                  <label>
-                    <input type="radio" name="treatmentLocation" value="1" <?php echo ($treatmentLocationId == 1) ? "checked" : "" ?> default>
-                    LOCAL (SE CREARÁ CÓDIGO DE EMBRIOLOGÍA SI CORRESPONDE)
-                  </label>
+
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(O) Objetivo - Exploración Topográfica</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse">
+                                <i class="fa fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-lg-10">
+                                <select name="topographicalExam" id="topographicalExam" class="form-control" id="combobox" autofocus required onchange="addTopographicalExam()">
+                                    <option value="" disabled selected>-- SELECCIONE -- </option>
+                                    <?php foreach ($topographicalExams as $topographicalExam) : ?>
+                                        <option value="<?php echo $topographicalExam->id; ?>"><?php echo $topographicalExam->name ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="row" id="divTopographicalExamsDetail">
+
+                        </div>
+                    </div>
                 </div>
-                <div class="radio">
-                  <label>
-                    <input type="radio" name="treatmentLocation" value="2" <?php echo ($treatmentLocationId == 2) ? "checked" : "" ?>>
-                    EXTERNO
-                  </label>
+
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(O) Objetivo - Archivos y Exámenes de Laboratorio</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse">
+                                <i class="fa fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-lg-2 pull-right">
+                                <button class="btn btn-sm btn-primary" onclick="addFile()"><i class="fas fa-upload"></i> Subir archivo</button>
+                            </div>
+                        </div>
+                        <br>
+                        <div class="row" id="divFiles">
+                        </div>
+                    </div>
                 </div>
-              </div>
-            </div>
-            <div class="col-md-2" id="patientCategorySave">
-              <br>
-              <button type="button" id="btnSaveCategory" class="btn btn-primary btn-xs" onclick="savePatientCategory()">Guardar Categoría</button>
-            </div>
-          </div>
-          <div class="row" id="divTreatmentOptions">
-            <div class="col-md-4 col-md-offset-8">
-              <input type="hidden" value="<?php echo $patientCategoryId ?>" id="patientCategoryId">
-              <input type="hidden" value="<?php echo $categoryTreatmentId ?>" id="categoryTreatmentId">
-              <input type="hidden" value="<?php echo $categoryTreatmentStatus ?>" id="categoryTreatmentStatusId">
-              <input type="hidden" value="<?php echo $isTreatmentPregnancyTest ?>" id="isTreatmentPregnancyTest">
-              <input type="hidden" value="<?php echo $patient_id ?>" id="patientId">
-              <input type="hidden" value="<?php echo $patient->fecha_na ?>" id="patientBirthday">
-              <button type="button" id="btnCancelTreatment" class="btn btn-danger btn-xs" onclick="cancelTreatment()"><i class="fas fa-times"></i> Cancelar Tratamiento</button>
-              <button type="button" id="btnFinishTreatment" class="btn btn-primary btn-xs" onclick="finishTreatment()"><i class="fas fa-check"></i> Finalizar Tratamiento</button>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-3" id="divPregnancyTestDate">
-              <div class="form-group">
-                <label for="inputEmail1">Fecha notificación prueba embarazo</label>
-                <input type="date" id="pregnancyTestDate" class="form-control" min="<?php echo date('Y-m-d') ?>" value="<?php echo $categoryPregnancyTestDate ?>" onchange="selectPregnancyTestDate()"></input>
-              </div>
-            </div>
-            <div class="col-md-2">
-              <br>
-              <button type="button" id="btnSavePregnancyTestDate" class="btn btn-primary btn-xs" onclick="savePregnancyTestDate()"><i class="fas fa-check"></i>Guardar Fecha</button>
-            </div>
-            <div class="col-md-5" id="divPregnancyOptions">
-              <button type="button" id="btnPregnancyTest" class="btn btn-primary btn-xs" onclick="showPregnancyResult()"><i class="fas fa-vial"></i> Resultado de Prueba de Embarazo</button>
-              <div id="divPregnancyResultOptions">
-                <div class="form-group">
-                  <div class="radio">
-                    <label>
-                      <input type="radio" name="pregnancy_result" value="1" checked>
-                      Embarazo Exitoso
-                    </label>
-                  </div>
-                  <div class="radio">
-                    <label>
-                      <input type="radio" name="pregnancy_result" value="0">
-                      No se Embarazó
-                    </label>
-                  </div>
+
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(A) Análisis - Diagnósticos</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <select name="selectDiagnostics" id="selectDiagnostics" class="form-control" required onchange="selectDiagnostic(this.value)">
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <table class="table table-bordered table-hover">
+                                    <tbody id="diagnosticsTable">
+                                        <?php foreach ($reservationDiagnostics as $diagnostic) : ?>
+                                            <tr id="d<?php echo $diagnostic->reservation_detail_id ?>">
+                                                <td><?php echo $diagnostic->catalog_key . " | " . $diagnostic->name ?></td>
+                                                <td>
+                                                    <input class="form-control" type="text" id="<?php echo 'dv' . $diagnostic->reservation_detail_id ?>" value="<?php echo $diagnostic->value; ?>" onkeyup="updateDiagnostic('<?php echo $diagnostic->reservation_detail_id ?>')"></input>
+                                                </td>
+                                                <td><button class='btn btn-danger btn-xs' onclick="deleteDiagnostic('<?php echo $diagnostic->reservation_detail_id ?>')"><i class="fas fa-trash"></i></button></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <button type="button" id="btnCancelTreatment" class="btn btn-danger btn-xs" onclick="hidePregnancyResult()"><i class="fas fa-times"></i> Cancelar</button>
-                <button type="button" id="btnStartPregnancyTestTreatment" class="btn btn-primary btn-xs" onclick="savePregnancyResult()"><i class="fas fa-check"></i> Guardar</button>
-              </div>
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(A) Análisis - Observaciones de diagnósticos</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <textarea class="form-control" id="diagnosticObservations" name="diagnosticObservations" placeholder="Observaciones de diagnósticos"><?php echo $reservation->diagnostic_observations; ?></textarea>
+                    </div>
+                </div>
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(A) Plan - Observaciones de tratamiento o plan</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse"><i class="fa fa-minus"></i></button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <textarea class="form-control" id="treatmentObservations" name="treatmentObservations" placeholder="Observaciones de tratamiento o plan"><?php echo $reservation->treatment_observations; ?></textarea>
+                    </div>
+                </div>
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">(P) Plan - Receta de Medicamentos</h3>
+                        <div class="box-tools pull-right">
+                            <a href='./?view=reservations/report-prescription&id=<?php echo $reservationId ?>' target="__blank" class='btn btn-primary btn-xs'><i class="fas fa-file-medical"></i> Receta Médica</a>
+                            <button type="button" class="btn btn-box-tool" data-widget="collapse">
+                                <i class="fa fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <select name="selectMedicines" id="selectMedicines" class="form-control" required onchange="selectMedicine(this.value)">
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <th width="250px;">Medicamento</th>
+                                        <th width="120px;">Tomar</th>
+                                        <th width="200px;">Frecuencia</th>
+                                        <th width="120px;">Duración</th>
+                                        <th>Notas</th>
+                                        <th></th>
+                                    </thead>
+                                    <tbody id="medicinesTable">
+                                        <?php foreach ($reservationMedicines as $medicine) : ?>
+                                            <tr id="m<?php echo $medicine->reservation_detail_id ?>">
+                                                <td><label><?php echo $medicine->generic_name . "|" . $medicine->pharmaceutical_form ?></label><?php echo " <br>" . $medicine->concentration . "<br>" . $medicine->presentation ?></td>
+                                                <td>
+                                                    <input class="form-control" type="text" id="<?php echo 'mquantity' . $medicine->reservation_detail_id ?>" value="<?php echo $medicine->quantity; ?>" onkeyup="updateMedicine('<?php echo $medicine->reservation_detail_id; ?>','quantity')"></input>
+                                                </td>
+                                                <td>
+                                                    <input class="form-control" type="text" id="<?php echo 'mfrequency' . $medicine->reservation_detail_id ?>" value="<?php echo $medicine->frequency; ?>" onkeyup="updateMedicine('<?php echo $medicine->reservation_detail_id; ?>','frequency')"></input>
+                                                </td>
+                                                <td>
+                                                    <input class="form-control" type="text" id="<?php echo 'mduration' . $medicine->reservation_detail_id ?>" value="<?php echo $medicine->duration; ?>" onkeyup="updateMedicine('<?php echo $medicine->reservation_detail_id; ?>','duration')"></input>
+                                                </td>
+                                                <td>
+                                                    <input class="form-control" type="text" id="<?php echo 'mdescription' . $medicine->reservation_detail_id ?>" value="<?php echo $medicine->description; ?>" onkeyup="updateMedicine('<?php echo $medicine->reservation_detail_id; ?>','description')"></input>
+                                                </td>
+                                                <td><button class='btn btn-danger btn-xs' onclick="deleteMedicine('<?php echo $medicine->reservation_detail_id ?>')"><i class="fas fa-trash"></i></button></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         <?php endif; ?>
-        <hr>
-        <div class="row">
-          <div class="col-md-3">
-            <label for="inputEmail1"> Asistencia a la Cita: </label>
-            <div class="form-group">
-              <div class="radio">
-                <label>
-                  <input type="radio" name="iniciar_cita" value="noasistio" <?php echo ($reservation->status_reservation_id == 2) ? "checked" : "" ?>>
-                  No asistió
-                </label>
-              </div>
-              <div class="radio">
-                <label>
-                  <input type="radio" name="iniciar_cita" value="asistio" <?php echo ($reservation->status_reservation_id == 1) ? "checked" : "" ?>>
-                  Asistió
-                </label>
-              </div>
-            </div>
-          </div>
-          <!-- Mostrar categorías y tratamientos para pacientes MUJERES-->
-          <?php if ($patient->sex_id == 1) : ?>
-            <div class="col-md-3" id="paps_test_data">
-              <label for="inputEmail1">Papanicolaou:</label>
-              <div class="form-group">
-                <div class="radio">
-                  <label>
-                    <input type="radio" name="paps_test" value="paps" <?php echo ($reservation->papanicolaou_test == 1) ? "checked" : "" ?>>
-                    Se realizó
-                  </label>
-                </div>
-                <div class="radio">
-                  <label>
-                    <input type="radio" name="paps_test" value="nopaps" <?php echo ($reservation->papanicolaou_test == 0) ? "checked" : "" ?>>
-                    No se realizó
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-group">
-                <label>Embarazo:</label><br>
-                <div id="divPregnancyDetail">
-                  <label id="lblPregnancyDetail">EMBARAZO <?php echo ($patientPregnancyDetail && $patientPregnancyDetail->pregnancy_type_id == 1) ? 'POR TRATAMIENTO ' . $patientPregnancyDetail->getTreatment()->treatment_name : 'EXTERNO'; ?> REGISTRADO EL <?php echo ($patientPregnancyDetail) ? $patientPregnancyDetail->getStartDateFormat() : '-'; ?> </label><br>
-                  <button type="button" id="btnFinishPregnancy" class="btn btn-primary btn-xs" onclick="finishPregnancy()"><i class="fas fa-check"></i> Finalizar Embarazo</button>
-                  <input type="hidden" id="patientPregnancyId" value="<?php echo ($patientPregnancyDetail) ? $patientPregnancyDetail->id : '' ?>">
-                </div>
-                <div id="divExternalPregnancyDetail">
-                  <input type="checkbox" id="externalPregnancy" onclick="showExternalPregnancyOptions()">Marcar como Embarazo Externo
-                  <br>
-                  <button type="button" id="btnSaveExternalPregnancy" class="btn btn-primary btn-xs" onclick="saveExternalPregnancy()"><i class="fas fa-check"></i> Guardar</button>
-                </div>
-              </div>
-            </div>
-          <?php endif; ?>
-        </div>
-        <hr>
-        <div class="row" id="reservation_note">
-          <div class="col-md-12">
-            <form class="form-horizontal" role="form" method="post" action="./?action=add_resumen">
-              <input type="hidden" name="id_medico" value="<?php echo $reservation->medic_id ?>">
-              <input type="hidden" name="id_paciente" value="<?php echo $patient_id ?>">
-              <input type="hidden" name="id_reser" value="<?php echo  $_GET["id"] ?>">
-              <input type="hidden" name="fecha" value="<?php echo  $_GET["fecha"] ?>">
-              <label for="inputEmail1" class="control-label">Nota Paciente</label>
-              <div class="col-lg-12">
-                <textarea class="form-control" id="note" name="note" rows="10"></textarea>
-                <button type="submit" id="btnSaveNote" class="btn btn-default">GUARDAR</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      <!-- /.box-body -->
     </div>
-    <div class="box box-primary">
-      <div class="box-header with-border">
-        <h3 class="box-title">Historial</h3>
-      </div>
-      <!-- /.box-header -->
-      <div class="box-body">
-        <div class="row">
-          <div class="col-md-12">
-            <?php foreach ($patientNotes as $note) {
-              $idEx = $note->id;
-              $date = $note->fecha;
-              echo "<hr>";
-              echo '<b><button type="submit" class="btn btn-large btn-primary" onClick="showRecord(' . $idEx . ')" id="editar">Nota ' . $date . '</button></b>
-              <br>';
-              echo $note->resumen;
-            }
-            ?>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+</div>
 </div>
 <script>
-  $(document).ready(function() {
-    //ASISTENCIA
-    let status_reservation = "<?php echo $reservation->status_reservation_id; ?>";
-    if (status_reservation == 1) {
-      //Asistió
-      $("#reservation_note").show(); //Mostrar nota si asistió
-      $("#paps_test_data").show(); //Mostrar campos de Papanicolaou si asistió
-      let reservation_note = '<?php echo json_encode($reservationActualNote); ?>';
+    var Toast = Swal.mixin({
+        toast: true,
+        position: 'bottom-end',
+        showConfirmButton: false,
+        timer: 3000
+    });
 
-      if (reservation_note != 'null' && reservation_note != null && reservation_note != "") {
-        //Si ya tiene una nota no permitirle agregar nueva, que edite la existente en la parte inferior.
-        $("#btnSaveNote").attr('disabled', true);
-        $('.nicEdit-main').attr('contenteditable', 'false');
-        $('.nicEdit-panel').hide();
-      }
-    } else {
-      //No asistió o pendiente de definir
-      $("#reservation_note").hide();
-      $("#paps_test_data").hide();
-    }
+    //var reasonNicEditor = new nicEditor().panelInstance('reason');
+    var patientObservationsNicEditor = new nicEditor().panelInstance('patientObservations');
+    var diagnosticObservationsNicEditor = new nicEditor().panelInstance('diagnosticObservations');
+    var treatmentObservationsNicEditor = new nicEditor().panelInstance('treatmentObservations');
 
-  });
+    $(document).ready(function() {
 
-  function confirmar() {
-    var flag = confirm("¿¿Seguro quedeseas eliminar?");
-    if (flag == true) {
-      return true;
-    } else {
-      return false;
-    }
-  }
+        $("#physicalExam").select2({});
+        $("#topographicalExam").select2({});
 
-  function showRecord(id) {
-    window.close();
-    var url = "./?view=editexpediente&id=" + id + "";
-    window.open(url, 'popup', 'width=800,height=600, top=100, left=200');
-  }
-
-  //CAMBIO DE ASISTENCIA
-  $('input[type=radio][name=iniciar_cita]').change(function() {
-
-    if (this.value == 'asistio') {
-      $.ajax({
-        url: "./?action=updatereservationstatus",
-        type: "POST",
-        data: {
-          reservation_id: <?php echo $reservation->id ?>,
-          status_id: 1
-        },
-        success: function() {
-          $("#reservation_note").show();
-          $("#paps_test_data").show();
-        },
-        error: function() {
-          $('input[type=radio][name=iniciar_cita][value="noasistio"]').prop('checked', true).change();
-          alert("Ha ocurrido un error al registrar la asitencia.");
-        }
-      });
-    } else if (this.value == 'noasistio') {
-      var note_content = $("div.nicEdit-main").html().trim(); //Get Textarea content
-
-      if (note_content !== "" && note_content != "<br>") {
-        alert("Borra la nota si el paciente no asistió.");
-        $('input[type=radio][name=iniciar_cita][value="asistio"]').prop('checked', true).change();
-      } else {
-        //Actualizar estatus en BD
-        $.ajax({
-          url: "./?action=updatereservationstatus",
-          type: "POST",
-          data: {
-            reservation_id: <?php echo $reservation->id ?>,
-            status_id: 2
-          },
-          success: function() {
-            $("#reservation_note").hide();
-            $('input[type=radio][name=paps_test][value="nopaps"]').prop('checked', true).change();
-            $("#paps_test_data").hide();
-          },
-          error: function() {
-            $('input[type=radio][name=iniciar_cita][value="asistio"]').prop('checked', true).change();
-            alert("Ha ocurrido un error al registrar la asitencia.");
-          }
+        $('#selectDiagnostics').select2({
+            placeholder: "Escribe el nombre o clave del diagnóstico",
+            minimumInputLength: 3,
+            ajax: {
+                url: "./?action=diagnostics/get-search", // json datasource
+                type: 'GET',
+                dataType: 'json',
+                delay: 250,
+                processResults: function(data) {
+                    return {
+                        results: data
+                    }
+                }
+            }
         });
-      }
-    }
-  });
 
-  //PAPANICOLAU
-  $('input[type=radio][name=paps_test]').change(function() {
+        $('#selectMedicines').select2({
+            language: "es",
+            placeholder: "Escribe el nombre del medicamento",
+            minimumInputLength: 3,
+            ajax: {
+                url: "./?action=medicines/get-search", // json datasource
+                type: 'GET',
+                dataType: 'json',
+                delay: 250,
+                processResults: function(data) {
+                    return {
+                        results: data
+                    }
+                }
+            }
+        });
 
-    if (this.value == 'paps') {
-      $.ajax({
-        url: "./?action=updatereservationpapstest",
-        type: "POST",
-        data: {
-          reservation_id: <?php echo $reservation->id ?>,
-          papanicolaou_test: 1,
-        },
-        success: function() {
+        validateConsultationDetails();
+        showExplorationExams(2);
+        showExplorationExams(3);
 
-        },
-        error: function() {
-          $('input[type=radio][name=paps_test][value="nopaps"]').prop('checked', true).change();
-          alert("Ha ocurrido un error al registrar el dato de Papanicolaou.");
+        //Inicializar motivo como editor personalizado
+        $("#reason").keyup(function() {
+            updateReason();
+        });
+
+        document.getElementById('patientObservations').parentElement.onkeydown = function() {
+            updatePatientObservations();
         }
-      });
-    } else if (this.value == 'nopaps') {
-      //Actualizar estatus en BD
-      $.ajax({
-        url: "./?action=updatereservationpapstest",
-        type: "POST",
-        data: {
-          reservation_id: <?php echo $reservation->id ?>,
-          papanicolaou_test: 0
-        },
-        success: function() {
-
-        },
-        error: function() {
-          $('input[type=radio][name=paps_test][value="paps"]').prop('checked', true).change();
-          alert("Ha ocurrido un error al registrar el dato de Papanicolaou.");
+        document.getElementById('diagnosticObservations').parentElement.onkeydown = function() {
+            updateDiagnosticObservations();
         }
-      });
+        document.getElementById('treatmentObservations').parentElement.onkeydown = function() {
+            updateTreatmentObservations();
+        }
 
+        showFiles(); //Mostrar archivos subidos
+    });
+
+    function validateConsultationDetails() {
+        //Muestra y oculta los detalles de la consulta
+        //Añade el color al estatus de la cita
+        $("#reservation_status_name").removeClass(); //Borra todas las clases
+
+        if ($("#status_id").val() == "2") {
+            //Asistió paciente
+            $("#medicalConsultationDetails").show();
+            $("#reservation_status_name").addClass("btn-primary");
+        } else if ($("#status_id").val() == "3") {
+            //Cancelado
+            $("#reservation_status_name").addClass("btn-danger");
+            $("#medicalConsultationDetails").hide();
+        } else {
+            $("#medicalConsultationDetails").hide();
+        }
     }
-  });
+
+    /*-----------------RESERVATION OPTIONS-------------*/
+    $("#btnDeleteReservation").click(function() {
+        Swal.fire({
+            title: '¿Estás seguro de eliminar la cita?',
+            text: "¡No serás capaz de revertir esto!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            cancelButtonText: 'Cancelar',
+            confirmButtonText: 'Sí, Eliminar'
+        }).then((result) => {
+            if (result.value) {
+                $.ajax({
+                    url: "./?action=reservations/delete-reservation", // json datasource
+                    type: "POST", // method, by default get
+                    data: "id=" + "<?php echo $reservationId; ?>",
+                    success: function() {
+                        window.location = 'index.php?view=home';
+                    },
+                    error: function() { // error handling
+                        Swal.fire(
+                            'Error',
+                            'La cita no se ha podido eliminar.',
+                            'error'
+                        );
+                    }
+                });
+            }
+        })
+    });
+
+    $("#btnCancelReservation").click(function() {
+        Swal.fire({
+            title: '¿Estás seguro de cancelar la cita?',
+            text: "Al cancelar la cita indicas que el paciente no asistó.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            cancelButtonText: 'Cancelar',
+            confirmButtonText: 'Sí, Cancelar'
+        }).then((result) => {
+            if (result.value) {
+                updateReservationStatus(3);
+            }
+        })
+    });
+
+    /*---------AÑADIR ARCHIVOS----------*/
+    function addFile() {
+        Swal.fire({
+            title: 'Archivo',
+            input: 'file',
+            inputAttributes: {
+                'accept': '/*',
+                'aria-label': 'Selecciona el archivo',
+            },
+            onBeforeOpen: () => {
+                $(".swal2-file").change(function() {
+                    var reader = new FileReader();
+                    reader.readAsDataURL(this.files[0]);
+                });
+            },
+
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            showLoaderOnConfirm: true,
+            inputValidator: (value) => {
+                if (!value) {
+                    return '¡Selecciona un archivo!'
+                }
+            },
+            preConfirm: (value) => {
+                var formData = new FormData();
+                formData.append('patientId', $("#patientId").val());
+                formData.append('reservationId', $("#reservationId").val());
+
+                var file = $('.swal2-file')[0].files[0];
+                formData.append("files", file);
+
+                $.ajax({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    type: "POST",
+                    url: "./?action=patient-files/add",
+                    contentType: false,
+                    cache: false,
+                    processData: false,
+                    data: formData,
+                    error: function() {
+                        Swal.fire(
+                            '¡Oops!',
+                            'El archivo no se ha podido guardar.',
+                            'error'
+                        )
+                    },
+                    success: function(data) {
+                        showFiles();
+                    }
+                });
+            },
+            allowOutsideClick: () => !Swal.isLoading()
+        });
+    }
+
+
+    function deleteFile(id) {
+        $.ajax({
+            url: "./?action=patient-files/delete-reservation",
+            type: "POST",
+            data: {
+                id: id
+            },
+            success: function(data) {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Archivo eliminado.'
+                });
+                showFiles();
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al eliminar el archivo.'
+                });
+            }
+        });
+    }
+
+    function showFiles() {
+        $.ajax({
+            url: "./?action=patient-files/get-reservation",
+            type: "GET",
+            data: {
+                reservationId: $("#reservationId").val(),
+                patientId: $("#patientId").val(),
+            },
+            success: function(data) {
+                $("#divFiles div").remove()
+                $("#divFiles").append(data);
+            }
+        });
+    }
+
+    /*---------------RESERVATION REASON----------------- */
+
+    function updateReason() {
+        var reason = $("#reason").val();
+        $.ajax({
+            url: "./?action=reservations/update-reason-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationId: "<?php echo $reservationId; ?>",
+                reason: reason
+            },
+            success: function() {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Actualizado Motivo de la Cita.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar el motivo de la cita.'
+                });
+            }
+        });
+    }
+
+    /*---------------RESERVATION PATIENT OBSERVATIONS----------------- */
+
+    function updatePatientObservations() {
+        let patientObservations = nicEditors.findEditor('patientObservations').getContent();
+        $.ajax({
+            url: "./?action=reservations/update-patient-observations", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationId: "<?php echo $reservationId; ?>",
+                patientObservations: patientObservations
+            },
+            success: function() {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Actualizadas observaciones del paciente.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar las observaciones del paciente.'
+                });
+            }
+        });
+    }
+
+    /*---------------RESERVATION DIAGNOSTIC OBSERVATIONS----------------- */
+
+    function updateDiagnosticObservations() {
+        let diagnosticObservations = nicEditors.findEditor('diagnosticObservations').getContent();
+        $.ajax({
+            url: "./?action=reservations/update-diagnostic-observations", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationId: "<?php echo $reservationId; ?>",
+                diagnosticObservations: diagnosticObservations
+            },
+            success: function() {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Actualizadas observaciones de diagnósticos.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar las observaciones de diagnósticos.'
+                });
+            }
+        });
+    }
+
+    /*---------------RESERVATION TREATMENT OBSERVATIONS----------------- */
+
+    function updateTreatmentObservations() {
+        let treatmentObservations = nicEditors.findEditor('treatmentObservations').getContent();
+        $.ajax({
+            url: "./?action=reservations/update-treatment-observations", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationId: "<?php echo $reservationId; ?>",
+                treatmentObservations: treatmentObservations
+            },
+            success: function() {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Actualizadas observaciones de tratamiento/plan.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar las observaciones de tratamiento/plan.'
+                });
+            }
+        });
+    }
+
+    /*--------------VITAL SIGNS---------------- */
+    function updateVitalSign(id) {
+        //Se creó una función sólo para los signos vitales
+        let value = $('#explorationExam' + id).val();
+
+        $.ajax({
+            url: "./?action=exploration-exams/update-vital-sign-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                explorationExamId: id,
+                reservationId: $("#reservationId").val(),
+                value: value
+            },
+            success: function() {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Información Actualizada.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar la información.'
+                });
+            }
+        });
+    }
+
+
+    /*--------------EXPLORATION EXAMS----------*/
+    function showExplorationExams(explorationExamTypeId) {
+        $.ajax({
+            url: "./?action=exploration-exams/get-reservation",
+            type: "GET",
+            data: {
+                reservationId: $("#reservationId").val(),
+                explorationExamTypeId: explorationExamTypeId,
+            },
+            success: function(data) {
+                if (explorationExamTypeId == 2) {
+                    $("#divPhysicalExamsDetail div").remove()
+                    $("#divPhysicalExamsDetail").append(data);
+                } else if (explorationExamTypeId == 3) {
+                    $("#divTopographicalExamsDetail div").remove()
+                    $("#divTopographicalExamsDetail").append(data);
+                }
+            }
+        });
+    }
+
+    function updateExplorationExam(id) {
+        //let value = nicEditors.findEditor('explorationExam' + id).getContent();
+        let value = $('#explorationExam' + id).val();
+
+        $.ajax({
+            url: "./?action=exploration-exams/update-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                id: id,
+                value: value
+            },
+            success: function() {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Información Actualizada.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar la información.'
+                });
+            }
+        });
+    }
+
+    function deleteExplorationExam(id, explorationExamTypeId) {
+        $.ajax({
+            url: "./?action=exploration-exams/delete-reservation",
+            type: "POST",
+            data: {
+                id: id
+            },
+            success: function(data) {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Información eliminada.'
+                });
+                showExplorationExams(explorationExamTypeId);
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al eliminar la información.'
+                });
+            }
+        });
+    }
+
+    function addPhysicalExam() {
+        $.ajax({
+            url: "./?action=exploration-exams/add-reservation",
+            type: "POST",
+            data: {
+                reservationId: $("#reservationId").val(),
+                explorationExamId: $("#physicalExam").val(),
+            },
+            success: function(data) {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Examen físico agregado.'
+                });
+                showExplorationExams(2);
+            }
+        });
+    }
+
+    function addTopographicalExam() {
+        $.ajax({
+            url: "./?action=exploration-exams/add-reservation",
+            type: "POST",
+            data: {
+                reservationId: $("#reservationId").val(),
+                explorationExamId: $("#topographicalExam").val(),
+            },
+            success: function(data) {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Examen topográfico agregado.'
+                });
+                showExplorationExams(3);
+            }
+        });
+    }
+    /*--------------EXPLORATION EXAMS----------*/
+
+    function updateReservationStatus(status) {
+        $.ajax({
+            url: "./?action=reservations/update-status-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationId: "<?php echo $reservationId; ?>",
+                statusId: status
+            },
+            success: function(data) {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Actualizado Estatus de la Cita.'
+                });
+                let datos = JSON.parse(data);
+
+                $("#reservation_status_name").text(datos[
+                    'name']); //Actualizar nombre del estatus de la reservación
+                $("#status_id").val(datos['id']); //Actualizar estatus id de la reservación
+                validateConsultationDetails();
+                if (status == 2) {
+                    $("#btnStartConsultation").hide();
+                }
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar el Estatus de la Cita.'
+                });
+            }
+        });
+    }
+
+    /*--------------DIAGNOSTICS----------*/
+    function selectDiagnostic(diagnosticData) {
+        let diagnostic = diagnosticData.split("|");
+        let diagnosticId = diagnostic[0];
+        let diagnosticCatalogKey = diagnostic[1];
+        let diagnosticName = diagnostic[2];
+
+        $.ajax({
+            url: "./?action=reservations/add-diagnostic-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationId: "<?php echo $reservationId; ?>",
+                diagnosticId: diagnosticId,
+            },
+            success: function(data) {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Diagnóstico agregado.'
+                });
+                let trTable = "<tr id='d" + data + "'><td>" + diagnosticCatalogKey + " | " + diagnosticName + "</td>";
+                trTable += "<td><input class='form-control' type='text' id='dv" + data + "' value='' onkeyup='updateDiagnostic(" + data + ")'></input></td>";
+                trTable += "<td><button class='btn btn-danger btn-xs' onclick='deleteDiagnostic(" + data + ")'><i class='fas fa-trash'></i></button></td></tr>";
+
+                $("#diagnosticsTable").append(trTable);
+
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al añadir el diagnóstico.'
+                });
+            }
+        });
+    }
+
+    function updateDiagnostic(id) {
+        let diagnosticValue = $('#dv' + id).val();
+        $.ajax({
+            url: "./?action=reservations/update-diagnostic-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                id: id,
+                value: diagnosticValue
+            },
+            success: function() {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Información Actualizada.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar la información.'
+                });
+            }
+        });
+    }
+
+    function deleteDiagnostic(reservationDiagnosticId) {
+        $.ajax({
+            url: "./?action=reservations/delete-diagnostic-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationDiagnosticId: reservationDiagnosticId
+            },
+            success: function() {
+                $("#d" + reservationDiagnosticId).remove();
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Diagnóstico eliminado.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al eliminar el diagnóstico.'
+                });
+            }
+        });
+    }
+
+    /*--------------MEDICINES----------*/
+    function selectMedicine(medicineData) {
+        let medicine = medicineData.split("|");
+        let medicineId = medicine[0];
+        let medicineGenericName = medicine[1];
+        let medicinePharmaceuticalForm = medicine[2];
+        let medicineConcentration = medicine[3];
+        let medicinePresentation = medicine[4];
+
+        $.ajax({
+            url: "./?action=reservations/add-medicine-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationId: "<?php echo $reservationId; ?>",
+                medicineId: medicineId,
+            },
+            success: function(data) {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Medicamento agregado.'
+                });
+                let trTable = "<tr id='m" + data + "'><td><label>" + medicineGenericName + "|" + medicinePharmaceuticalForm + "</label><br>" + medicineConcentration + "<br>" + medicinePresentation + "</td>";
+                trTable += '<td><input class="form-control" type="text" id="mquantity' + data + '" onkeyup="updateMedicine(' + data + ',`quantity`)"></input></td>';
+                trTable += '<td><input class="form-control" type="text" id="mfrequency' + data + '" onkeyup="updateMedicine(' + data + ',`frequency`)"></input></td>';
+                trTable += '<td><input class="form-control" type="text" id="mduration' + data + '" onkeyup="updateMedicine(' + data + ',`duration`)"></input></td>';
+                trTable += '<td><input class="form-control" type="text" id="mdescription' + data + '" onkeyup="updateMedicine(' + data + ',`description`)"></input></td>';
+                trTable += "<td><button class='btn btn-danger btn-xs' onclick='deleteMedicine(" + data + ")'><i class='fas fa-trash'></i></button></td></tr>";
+
+                $("#medicinesTable").append(trTable);
+
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al añadir el medicamento.'
+                });
+            }
+        });
+    }
+
+    function updateMedicine(id, column) {
+        let medicineValue = $('#m' + column + id).val();
+        $.ajax({
+            url: "./?action=reservations/update-medicine-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                id: id,
+                column: column,
+                value: medicineValue
+            },
+            success: function() {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Información Actualizada.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar la información.'
+                });
+            }
+        });
+    }
+
+    function deleteMedicine(reservationMedicineId) {
+        $.ajax({
+            url: "./?action=reservations/delete-medicine-reservation", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationMedicineId: reservationMedicineId
+            },
+            success: function() {
+                $("#m" + reservationMedicineId).remove();
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Medicamento eliminado.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al eliminar el medicamento.'
+                });
+            }
+        });
+    }
+
+
+    /*PSYCHOLOGY PROCEDURES */
+    function selectReservationStatus() {
+        updateReservationStatus($("#statusReservation").val());
+    }
+
+    function selectPatientNotified() {
+        let value = 0;
+        if ($('#patientNotified').prop('checked')) {
+            value = 1;
+        }
+        updatePatientNotified(value);
+    }
+
+    function updatePatientNotified(value) {
+        $.ajax({
+            url: "./?action=reservations/update-reservation-notified", // json datasource
+            type: "POST", // method, by default get
+            data: {
+                reservationId: "<?php echo $reservationId; ?>",
+                value: value
+            },
+            success: function(data) {
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Actualizado recordatorio al paciente.'
+                });
+            },
+            error: function() { // error handling
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error al actualizar el recordatorio al paciente.'
+                });
+            }
+        });
+    }
 </script>

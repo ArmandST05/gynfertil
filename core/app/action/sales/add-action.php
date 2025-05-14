@@ -1,133 +1,121 @@
 <?php
-if(isset($_SESSION["cart"])){
+$branchOfficeId = ReservationData::getById($_POST["reservationId"])->branch_office_id;
+
+if (isset($_SESSION["cart"])) {
 	$cart = $_SESSION["cart"];
-	if(count($cart)>0){
+	if (count($cart) > 0) {
 		/// antes de proceder con lo que sigue vamos a verificar que:
 		// haya existencia de productos
 		// si se va a facturar la cantidad a facturar debe ser menor o igual al producto facturado en inventario
-		$num_succ = 0;
+		$numSuccessfully = 0;
 		$process = false;
 		$errors = array();
-		foreach($cart as $c){
 
-			$q = OperationData::getStockByProduct($c["product_id"]);
-
-            if($c["type"] == "CONCEPTO"){
-            	$num_succ++;
-            }
-			else if($c["q"] <= $q){
-				if(isset($_POST["is_oficial"])){
-					$qyf = OperationData::getStockByProduct($c["product_id"]); //Son los productos que puedo facturar
-					if($c["q"]<=$qyf){
-						$num_succ++;
-					}else{
-					$error = array("product_id"=>$c["product_id"],"message"=>"No hay suficiente cantidad de producto para facturar en inventario.");					
+		foreach ($cart as $cartProduct) {
+			$quantity = OperationDetailData::getStockByBranchOfficeProduct($branchOfficeId,$cartProduct["id"]);
+			if ($cartProduct["typeId"] == "1") {
+				//Comisiones
+				$numSuccessfully++;
+			} else if ($cartProduct["quantity"] <= $quantity) {
+				$stock = OperationDetailData::getStockByBranchOfficeProduct($branchOfficeId,$cartProduct["id"]);
+				if ($cartProduct["quantity"] <= $stock) {
+					$numSuccessfully++;
+				} else {
+					$error = array("id" => $cartProduct["id"], "message" => "No hay suficiente cantidad de producto en inventario.");
 					$errors[count($errors)] = $error;
-					}
-				}else{
-					// Si llegue hasta aquí y no voy a facturar, entonces se continúa ...
-					$num_succ++;
 				}
-			}else{
-				$error = array("product_id"=>$c["product_id"],"message"=>"No hay suficiente cantidad de producto en inventario.");
+			} else {
+				$error = array("id" => $cartProduct["id"], "message" => "No hay suficiente cantidad de producto en inventario.");
 				$errors[count($errors)] = $error;
 			}
 		}
 
-		if($num_succ == count($cart)){
+		if ($numSuccessfully == count($cart)) {
 			$process = true;
 		}
-
-		if($process == false){
+		
+		if ($process == false) {
 			$_SESSION["errors"] = $errors;
-
 			echo '<script>
-				window.location="index.php?view=sales/new-details&id_paciente='.$_POST["id_paciente"].'&idMed='.$_POST["idMed"].'";
+				window.location="index.php?view=sales/new-details&patientId=' . $_POST["patientId"] . '&medicId=' . $_POST["medicId"] . '";
 			</script>';
-		}
+		} else if ($process == true) {
+			$sale = new OperationData();
+			$sale->user_id = $_SESSION["user_id"];
+			$sale->total = $_POST["total"];
+			$sale->discount = $_POST["discount"];
+			$sale->description = $_POST["description"];
+			$sale->date = $_POST["date"];
 
-		if($process == true){
-			$sell = new SellData();
-			$sell->user_id = $_SESSION["user_id"];
+			if ($_POST["reservationId"] == "") $sale->reservation_id = 0;
+			else $sale->reservation_id = $_POST["reservationId"];
 
-			$sell->total = $_POST["total"];
-			$sell->discount = $_POST["discount"];
-			$sell->note = $_POST["note"];
-            
-            $tot=$_POST["total"];
- 			$totalGen=$_POST["totalGen"];
- 			$sell->date =$_POST["date"];
+			$liquidated = floatval($_POST["total"]) - floatval($_POST["totalPayment"]);
 
- 			if($_POST["idRes"]==""){
- 				$sell->idRes=0;
- 			}else{
- 				$sell->idRes = $_POST["idRes"];
-            }
-           
-            $liq=$tot - $totalGen;
+			if ($liquidated <= 0) $sale->status_id = 1; //Liquidado
+			else $sale->status_id = 0;
 
-            if($liq <= 0){
-            	$sell->status = 1;
-            }else{
-            	$sell->status = 0;
-            }
-
-			if(isset($_POST["id_paciente"]) && $_POST["id_paciente"] != ""){
-				$sell->person_id=$_POST["id_paciente"];
-				$s = $sell->add_with_client($_POST["id_paciente"],$_POST["idMed"]);
+			if (isset($_POST["patientId"]) && $_POST["patientId"] != "") {
+				$sale->patient_id = $_POST["patientId"];
+				//Registrar ingreso en la sucursal donde se registró la cita.
+				$sale->branch_office_id = $branchOfficeId;
+				$newSale = $sale->addSale($_POST["patientId"], $_POST["medicId"]);
 			}
 
-       
-			foreach($cart as  $c){
-				$op = new OperationData();
-				$op->product_id = $c["product_id"] ;
-				$op->operation_type_id=OperationTypeData::getByName("salida")->id;
-				$op->sell_id=$s[1];
-				$op->q = $c["q"];
-				$op->price= $c["price"];
-				$op->date =$_POST["date"];
+			if (isset($newSale) && $newSale[1]) {
+				//Add products
+				foreach ($cart as $cartProduct) {
+					$opDetail = new OperationDetailData();
+					$opDetail->product_id = $cartProduct["id"];
+					$opDetail->operation_type_id = 2;
+					$opDetail->operation_id = $newSale[1];
+					$opDetail->quantity = $cartProduct["quantity"];
+					$opDetail->price = $cartProduct["price"];
+					$opDetail->date = $_POST["date"];
+					$add = $opDetail->add();
 
-				if(isset($_POST["is_oficial"])){
-					$op->is_oficial = 1;
+					unset($_SESSION["cart"]);
+					setcookie("selled", "selled");
+				}
+				//Payments
+				if (isset($_SESSION["payments"])) {
+					$payments = $_SESSION["payments"];
+					foreach ($payments as  $payment) {
+						$newPayment = new OperationPaymentData();
+						$newPayment->payment_type_id = $payment["id"];
+						$newPayment->date = $_POST["date"];
+						//En efectivo agregar validación por si paga extra es porque se le dará cambio pero esa cantidad no se registrará en el sistema.
+						if ($payment["id"] == 1 && ($payment["quantity"] > floatval($_POST["total"]))) {
+							$newPayment->total = $_POST["total"];
+						} else {
+							$newPayment->total = $payment["quantity"];
+						}
+						$newPayment->operation_id = $newSale[1];
+						$add = $newPayment->add();
+
+						unset($_SESSION["payments"]);
+						setcookie("selled", "selled");
+					}
 				}
 
-				$add = $op->add();			 		
+				//Registrar log
+				$log = new LogData();
+				$log->row_id = $newSale[1];
+				$log->branch_office_id = $sale->branch_office_id;
+				$log->user_id = $_SESSION["user_id"];
+				$log->module_id = 8;
+				$log->action_type_id = 1;
+				$log->description = "Se agregó una nueva venta para el paciente " . PatientData::getById($_POST["patientId"])->name . " el día ".$sale->date .".";
+				$newLog = $log->add();
 
-				unset($_SESSION["cart"]);
-				setcookie("selled","selled");
-			}
-
-			if(isset($_SESSION["payments"])){
-				$pay = $_SESSION["payments"];
-				$totP = 0;
-				$t = 0;
-				foreach($pay as  $p){
-
-					$op = new OperationData();
-					$op->idType = $p["idType"] ;
-					$op->date = $_POST["date"];
-					$op->bank_account_id = $p["bankAccountId"];
-					$op->is_invoice = $p["isInvoice"];
-					if($p["idType"]==1)
-					{
-						$totP = $_POST["totalGen"] - $_POST["total"];
-						$t = $p["money"]-$totP;	
-						$op->money = $t;
-					}
-					else{
-						$op->money= $p["money"];
-					}
-
-					$op->sell_id = $s[1];
-					
-					$add = $op->addPay();			 		
-
-					unset($_SESSION["payments"]);
-					setcookie("selled","selled");
+				//Actualizar la cita vinculada a la venta para que muestre el último estatus de la venta en el calendario
+				if($sale->reservation_id != 0){
+					ReservationData::updateLastSaleStatus($sale->reservation_id);
 				}
-			}
 
-			print "<script>window.location='index.php?view=onesell&id=$s[1]';</script>";
+				print "<script>window.location='index.php?view=sales/details&id=$newSale[1]';</script>";
+			}
 		}
 	}
+	print "<script>window.location='index.php?view=sales/new';</script>";
 }

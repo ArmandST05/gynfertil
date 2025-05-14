@@ -1,7 +1,12 @@
 <?php
 
 if(isset($_SESSION["user_id"]) && $_SESSION["user_id"]!=""){
+	if(($_SESSION['typeUser'] == "pa")){
+		print "<script>window.location='index.php?view=patients/medical-record';</script>";
+	}
+	else{
 		print "<script>window.location='index.php?view=home';</script>";
+	}
 }
 
 ?>
