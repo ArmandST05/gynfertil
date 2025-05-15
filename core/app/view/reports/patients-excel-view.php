@@ -1,23 +1,20 @@
 <?php
-use PhpOffice\PhpSpreadsheet\Helper\Sample;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
-$helper = new Sample();
-if ($helper->isCli()) {
-    $helper->log('This example should only be run from a Web Browser' . PHP_EOL);
-    return;
-}
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 $spreadsheet = new Spreadsheet();
-$spreadsheet->getProperties()->setCreator('Maarten Balliauw')
-    ->setLastModifiedBy('Maarten Balliauw')
-    ->setTitle('Office 2007 XLSX Test Document')
-    ->setSubject('Office 2007 XLSX Test Document')
-    ->setDescription('Test document for Office 2007 XLSX, generated using PHP classes.')
-    ->setKeywords('office 2007 openxml php')
-    ->setCategory('Test result file');
 
+// Propiedades del documento
+$spreadsheet->getProperties()->setCreator('Tu Nombre')
+    ->setLastModifiedBy('Tu Nombre')
+    ->setTitle('Reporte de Pacientes')
+    ->setSubject('Reporte')
+    ->setDescription('Reporte de pacientes exportado a Excel.')
+    ->setKeywords('pacientes excel exportacion')
+    ->setCategory('Reporte');
+
+// Encabezados de columnas
 $spreadsheet->setActiveSheetIndex(0)
     ->setCellValue('A1', 'ID')
     ->setCellValue('B1', 'NOMBRE')
@@ -50,106 +47,94 @@ $spreadsheet->setActiveSheetIndex(0)
     ->setCellValue('AC1', 'PSIQUIATRA')
     ->setCellValue('AD1', 'OBSERVACIONES');
 
-// Filtros desde GET
-$branch_id = isset($_GET['branch_office_id']) ? $_GET['branch_office_id'] : null;
-$psychologist_id = isset($_GET['psychologist_id']) ? $_GET['psychologist_id'] : null;
-$category_id = isset($_GET['category_id']) ? $_GET['category_id'] : null;
-$company_id = isset($_GET['company_id']) ? $_GET['company_id'] : null;
+// Obtener filtros desde GET
+$branch_id = $_GET['branch_office_id'] ?? null;
+$psychologist_id = $_GET['psychologist_id'] ?? null;
+$category_id = $_GET['category_id'] ?? null;
+$company_id = $_GET['company_id'] ?? null;
 
-// Usuario
+// Obtener usuario logueado (asumiendo método UserData::getLoggedIn())
 $user = UserData::getLoggedIn();
 $userId = $user->id;
 $userType = $user->user_type;
 
-// Obtener pacientes con filtros
-if ($userType == "su" || $userType == "co") {
-    $patients = PatientData::getFiltered($branch_id, $psychologist_id, $category_id, $company_id);
-} else {
-    $patients = PatientData::getFiltered($user->branch_office_id, $psychologist_id, $category_id, $company_id);
-}
-
-$index = 2;
+// Insertar datos de pacientes
+$row = 2;
 foreach ($patients as $patient) {
+    // Obtener tratamientos (solo los primeros 3 para psicología, por ejemplo)
     $treatments = TreatmentData::getAllPatientTreatments($patient->id, 3);
 
-    $treatmentName1 = "";
-    $treatmentPrice1 = "";
-    $treatmentStartDate1 = "";
-    $treatmentEndDate1 = "";
-    $treatmentMedicName1 = "";
-    $treatmentReason1 = "";
-    $treatmentNote1 = "";
-    $treatmentTotalSesions1 = "";
-    $treatmentDuration1 = "";
-    $treatmentPsychiatrist1 = "";
-    $treatmentLastNote1 = "";
-    $treatmentMedicName2 = "";
-    $treatmentMedicName3 = "";
+    $treatmentName1 = $treatmentPrice1 = $treatmentStartDate1 = $treatmentEndDate1 = "";
+    $treatmentMedicName1 = $treatmentReason1 = $treatmentNote1 = $treatmentTotalSessions1 = "";
+    $treatmentDuration1 = $treatmentPsychiatrist1 = $treatmentLastNote1 = "";
+    $treatmentMedicName2 = $treatmentMedicName3 = "";
 
-    foreach ($treatments as $indexTreatment => $treatment) {
-        if ($indexTreatment == 0) {
+    foreach ($treatments as $idx => $treatment) {
+        if ($idx == 0) {
             $treatmentName1 = $treatment->treatment_name;
             $treatmentPrice1 = $treatment->default_price;
             $treatmentStartDate1 = $treatment->start_date_format;
             $treatmentEndDate1 = $treatment->end_date_format;
-            $treatmentMedicName1 = (($treatment->getMedic()) ? $treatment->getMedic()->name : "");
+            $treatmentMedicName1 = $treatment->getMedic() ? $treatment->getMedic()->name : "";
             $treatmentReason1 = $treatment->reason;
             $treatmentNote1 = $treatment->cancellation_reason;
-            $treatmentTotalSesions1 = $treatment->getTotalReservations()->total;
+            $treatmentTotalSessions1 = $treatment->getTotalReservations()->total;
             $treatmentDuration1 = $treatment->getTreatmentDuration();
             $treatmentLastNote1 = $treatment->last_note;
             $treatmentPsychiatrist1 = $treatment->psychiatrist;
-        } else if ($indexTreatment == 1) {
-            $treatmentMedicName2 = (($treatment->getMedic()) ? $treatment->getMedic()->name : "");
-        } else if ($indexTreatment == 2) {
-            $treatmentMedicName3 = (($treatment->getMedic()) ? $treatment->getMedic()->name : "");
+        } elseif ($idx == 1) {
+            $treatmentMedicName2 = $treatment->getMedic() ? $treatment->getMedic()->name : "";
+        } elseif ($idx == 2) {
+            $treatmentMedicName3 = $treatment->getMedic() ? $treatment->getMedic()->name : "";
         }
     }
 
+    // Rellenar fila en Excel
     $spreadsheet->setActiveSheetIndex(0)
-        ->setCellValue('A' . $index, $patient->id)
-        ->setCellValue('B' . $index, $patient->name)
-        ->setCellValue('C' . $index, $patient->getBranchOffice()->name)
-        ->setCellValue('D' . $index, $treatmentName1)
-        ->setCellValue('E' . $index, $treatmentPrice1)
-        ->setCellValue('F' . $index, $patient->street)
-        ->setCellValue('G' . $index, $patient->number)
-        ->setCellValue('H' . $index, $patient->colony)
-        ->setCellValue('I' . $index, (($patient->getCounty()) ? $patient->getCounty()->name : ""))
-        ->setCellValue('J' . $index, $patient->getBirthdayFormat())
-        ->setCellValue('K' . $index, $patient->getAge())
-        ->setCellValue('L' . $index, $patient->getSex()->name)
-        ->setCellValue('M' . $index, $patient->cellphone)
-        ->setCellValue('N' . $index, $patient->getCategory()->name)
-        ->setCellValue('O' . $index, $treatmentStartDate1)
-        ->setCellValue('P' . $index, $treatmentMedicName1)
-        ->setCellValue('Q' . $index, $treatmentReason1)
-        ->setCellValue('R' . $index, (($patient->getEducationLevel()) ? $patient->getEducationLevel()->name : ""))
-        ->setCellValue('S' . $index, $patient->occupation)
-        ->setCellValue('T' . $index, $treatmentMedicName2)
-        ->setCellValue('U' . $index, $treatmentMedicName3)
-        ->setCellValue('V' . $index, $treatmentEndDate1)
-        ->setCellValue('W' . $index, $treatmentNote1)
-        ->setCellValue('X' . $index, $treatmentDuration1)
-        ->setCellValue('Y' . $index, $treatmentTotalSesions1)
-        ->setCellValue('Z' . $index, $treatmentLastNote1)
-        ->setCellValue('AA' . $index, '')
-        ->setCellValue('AB' . $index, (($patient->getCompany()) ? $patient->getCompany()->name : ""))
-        ->setCellValue('AC' . $index, $treatmentPsychiatrist1)
-        ->setCellValue('AD' . $index, $patient->observations);
+        ->setCellValue('A' . $row, $patient->id)
+        ->setCellValue('B' . $row, $patient->name)
+        ->setCellValue('C' . $row, $patient->getBranchOffice()->name)
+        ->setCellValue('D' . $row, $treatmentName1)
+        ->setCellValue('E' . $row, $treatmentPrice1)
+        ->setCellValue('F' . $row, $patient->street)
+        ->setCellValue('G' . $row, $patient->number)
+        ->setCellValue('H' . $row, $patient->colony)
+        ->setCellValue('I' . $row, $patient->getCounty() ? $patient->getCounty()->name : "")
+        ->setCellValue('J' . $row, $patient->getBirthdayFormat())
+        ->setCellValue('K' . $row, $patient->getAge())
+        ->setCellValue('L' . $row, $patient->getSex()->name)
+        ->setCellValue('M' . $row, $patient->cellphone)
+        ->setCellValue('N' . $row, $patient->getCategory()->name)
+        ->setCellValue('O' . $row, $treatmentStartDate1)
+        ->setCellValue('P' . $row, $treatmentMedicName1)
+        ->setCellValue('Q' . $row, $treatmentReason1)
+        ->setCellValue('R' . $row, $patient->getEducationLevel() ? $patient->getEducationLevel()->name : "")
+        ->setCellValue('S' . $row, $patient->occupation)
+        ->setCellValue('T' . $row, $treatmentMedicName2)
+        ->setCellValue('U' . $row, $treatmentMedicName3)
+        ->setCellValue('V' . $row, $treatmentEndDate1)
+        ->setCellValue('W' . $row, $treatmentNote1)
+        ->setCellValue('X' . $row, $treatmentDuration1)
+        ->setCellValue('Y' . $row, $treatmentTotalSessions1)
+        ->setCellValue('Z' . $row, $treatmentLastNote1)
+        ->setCellValue('AA' . $row, '') // REINGRESO vacío
+        ->setCellValue('AB' . $row, $patient->getCompany() ? $patient->getCompany()->name : "")
+        ->setCellValue('AC' . $row, $treatmentPsychiatrist1)
+        ->setCellValue('AD' . $row, $patient->observations);
 
-    $index++;
+    $row++;
 }
 
+// Renombrar hoja
 $spreadsheet->getActiveSheet()->setTitle('Pacientes');
 $spreadsheet->setActiveSheetIndex(0);
 
+// Headers para descarga del archivo Excel
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment;filename="Pacientes.xlsx"');
 header('Cache-Control: max-age=0');
-header('Cache-Control: max-age=1');
 header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+header('Last-Modified: '. gmdate('D, d M Y H:i:s') .' GMT');
 header('Cache-Control: cache, must-revalidate');
 header('Pragma: public');
 

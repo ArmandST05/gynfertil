@@ -146,6 +146,8 @@ require_once 'vendor/autoload.php';
                 <li><a href="./index.php?view=home"><i class='fa fa-home'></i> <span>Inicio</span></a></li>
                 <!--li><a href="./?view=sell"><i class='fa fa-usd'></i> <span>Vender</span></a></li-->
                 <li><a href="./?view=patients/index"><i class='fas fa-user-alt'></i> <span>Pacientes</span></a></li>
+                 <li><a href="./?view=patients/export"><i class='fas fa-user-alt'></i> <span>Respaldo</span></a></li>
+
                 <li><a href="./?view=medics/index"><i class='fa fa-user-md'></i> <span>Psicólogos</span></a></li>
 
                 <li class="treeview">

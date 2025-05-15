@@ -1,32 +1,32 @@
 <?php
-require_once "core/controller/Database.php";
-require_once "core/controller/PatientData.php";
-require_once "core/controller/UserData.php";
-require_once "core/controller/CompanyData.php";
-require_once "core/controller/PatientTreatmentData.php";
-require_once "vendor/autoload.php"; // PhpSpreadsheet
-
+require 'vendor/autoload.php'; // Asegúrate de ajustar la ruta si es necesario
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 $conn = Database::getCon();
 
+$requestData = $_REQUEST;
+
 $user = UserData::getLoggedIn();
+$userId = $user->id;
 $userType = $user->user_type;
-$branchOfficeId = ($userType == "su" || $userType == "co") ? $_POST['branchOfficeId'] : $user->getBranchOffice()->id;
+
+$medicId = $_POST['medicId'];
 $categoryId = $_POST['categoryId'];
 $companyId = $_POST['companyId'];
-$medicId = $_POST['medicId'];
 
-$sql = "SELECT p.*, pc.name AS patient_category_name
-        FROM patients p
-        INNER JOIN patient_categories pc ON p.category_id = pc.id
-        WHERE 1=1";
-
-if ($branchOfficeId) {
-    $sql .= " AND p.branch_office_id = " . intval($branchOfficeId);
+if ($userType == "su" || $userType == "co") {
+    $branchOfficeId = $_POST['branchOfficeId'];
+} else {
+    $branchOfficeId = $user->getBranchOffice()->id;
 }
 
+$sql = "SELECT p.*, pc.name AS patient_category_name, pc.color AS patient_category_color 
+        FROM patients p 
+        JOIN patient_categories pc ON p.category_id = pc.id 
+        WHERE 1=1 ";
+
+if ($branchOfficeId) $sql .= " AND p.branch_office_id = " . intval($branchOfficeId);
 if ($categoryId != "all" && $categoryId != "active") {
     $sql .= " AND p.category_id = " . intval($categoryId);
 } elseif ($categoryId == "active") {
@@ -45,46 +45,46 @@ if ($companyId != "all") {
 
 if ($medicId) {
     $sql .= " AND (
-        SELECT pt.medic_id
-        FROM patient_treatments pt
-        WHERE pt.patient_id = p.id
-        ORDER BY pt.start_date DESC
+        SELECT patient_treatments.medic_id
+        FROM patient_treatments
+        WHERE patient_treatments.patient_id = p.id
+        ORDER BY start_date DESC
         LIMIT 1
     ) = " . intval($medicId);
 }
 
-$sql .= " ORDER BY p.id DESC";
-
-$query = mysqli_query($conn, $sql);
+$query = mysqli_query($conn, $sql) or die("Error en la consulta.");
 
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 
 // Encabezados
-$headers = ['ID', 'Nombre', 'Dirección', 'Teléfono', 'Email', 'Familiar', 'Médico', 'Empresa', 'Categoría'];
-$sheet->fromArray($headers, NULL, 'A1');
+$headers = ['ID', 'Nombre', 'Calle', 'Celular', 'Email', 'Familiar', 'Médico', 'Empresa', 'Categoría'];
+$sheet->fromArray($headers, null, 'A1');
 
+// Datos
 $rowIndex = 2;
-while ($row = mysqli_fetch_assoc($query)) {
-    $patient = PatientData::getById($row['id']);
+while ($row = mysqli_fetch_array($query)) {
+    $patient = PatientData::getById($row["id"]);
     $medicName = ($patient->getLastTreatment()) ? $patient->getLastTreatment()->medic_name : "";
     $companyName = ($patient->getCompany()) ? $patient->getCompany()->name : "NO APLICA";
 
-    $sheet->setCellValue("A$rowIndex", $row['id']);
-    $sheet->setCellValue("B$rowIndex", $row['name']);
-    $sheet->setCellValue("C$rowIndex", $row['street']);
-    $sheet->setCellValue("D$rowIndex", $row['cellphone']);
-    $sheet->setCellValue("E$rowIndex", $row['email']);
-    $sheet->setCellValue("F$rowIndex", $row['relative_name']);
+    $sheet->setCellValue("A$rowIndex", $row["id"]);
+    $sheet->setCellValue("B$rowIndex", $row["name"]);
+    $sheet->setCellValue("C$rowIndex", $row["street"]);
+    $sheet->setCellValue("D$rowIndex", $row["cellphone"]);
+    $sheet->setCellValue("E$rowIndex", $row["email"]);
+    $sheet->setCellValue("F$rowIndex", $row["relative_name"]);
     $sheet->setCellValue("G$rowIndex", $medicName);
     $sheet->setCellValue("H$rowIndex", $companyName);
-    $sheet->setCellValue("I$rowIndex", $row['patient_category_name']);
+    $sheet->setCellValue("I$rowIndex", $row["patient_category_name"]);
+
     $rowIndex++;
 }
 
-// Descargar el archivo
+// Salida del archivo Excel
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-header('Content-Disposition: attachment;filename="pacientes-filtrados.xlsx"');
+header('Content-Disposition: attachment;filename="pacientes_filtrados.xlsx"');
 header('Cache-Control: max-age=0');
 
 $writer = new Xlsx($spreadsheet);

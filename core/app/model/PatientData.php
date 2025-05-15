@@ -373,71 +373,41 @@ class PatientData
 		return Model::one($query[0], new PatientData());
 	}
 
-    public static function getFiltered($branchOfficeId, $medicId, $categoryId, $companyId, $search = '') {
-        $conn = Database::getCon();
+	public static function getAllExport()
+{
+    $sql = "SELECT 
+                patients.id AS patient_id,
+                patients.name AS patient_name,
+                patients.street,
+                patients.number,
+                patients.colony,
+                counties.name AS county_name,
+                patients.cellphone,
+                patients.homephone,
+                patients.email,
+                patients.relative_name,
+                medics.name AS medic_name,
+                companies.name AS company_name,
+                patient_categories.name AS patient_category_name
+            FROM patients
+            LEFT JOIN counties ON patients.county_id = counties.id
+            LEFT JOIN patient_categories ON patients.category_id = patient_categories.id
+            LEFT JOIN companies ON patients.company_id = companies.id
+            LEFT JOIN (
+                SELECT patient_treatments.patient_id, patient_treatments.medic_id
+                FROM patient_treatments
+                INNER JOIN (
+                    SELECT patient_id, MAX(start_date) AS max_date
+                    FROM patient_treatments
+                    GROUP BY patient_id
+                ) latest ON patient_treatments.patient_id = latest.patient_id 
+                    AND patient_treatments.start_date = latest.max_date
+            ) latest_treatment ON patients.id = latest_treatment.patient_id
+            LEFT JOIN medics ON latest_treatment.medic_id = medics.id
+            ORDER BY patients.id DESC";
 
-        // Comienzo de la query
-        $sql  = "SELECT p.*, pc.name AS patient_category_name, pc.color AS patient_category_color
-                  FROM patients p
-                  JOIN patient_categories pc ON p.category_id = pc.id
-                 WHERE 1 = 1";
-
-        // Filtro de sucursal
-        if ($branchOfficeId) {
-            $sql .= " AND p.branch_office_id = " . intval($branchOfficeId);
-        }
-
-        // Filtro de categoría
-        if ($categoryId !== "all" && $categoryId !== "active") {
-            $sql .= " AND p.category_id = " . intval($categoryId);
-        } elseif ($categoryId === "active") {
-            $sql .= " AND (p.category_id = 1 OR p.category_id = 4)";
-        }
-
-        // Filtro de empresa
-        if ($companyId !== "all") {
-            if ($companyId === "company") {
-                $sql .= " AND (p.company_id IS NOT NULL AND p.company_id != 0)";
-            } elseif ($companyId === "withoutCompany") {
-                $sql .= " AND (p.company_id IS NULL OR p.company_id = 0)";
-            } else {
-                $sql .= " AND p.company_id = " . intval($companyId);
-            }
-        }
-
-        // Filtro de psicólogo (último tratamiento)
-        if ($medicId) {
-            $sql .= " AND (
-                        SELECT pt.medic_id
-                          FROM patient_treatments pt
-                         WHERE pt.patient_id = p.id
-                         ORDER BY pt.start_date DESC
-                         LIMIT 1
-                      ) = " . intval($medicId);
-        }
-
-        // Filtro de búsqueda global
-        if ($search !== '') {
-            // escapamos caracteres‑clave para LIKE
-            $s = mysqli_real_escape_string($conn, $search);
-            $sql .= " AND (
-                        p.name        LIKE '%{$s}%'
-                     OR p.cellphone  LIKE '%{$s}%'
-                     OR p.email      LIKE '%{$s}%'
-                     OR p.relative_name LIKE '%{$s}%'
-                      )";
-        }
-
-        // Orden y ejecución
-        $sql .= " ORDER BY p.id DESC";
-        $result = mysqli_query($conn, $sql) or die("Error en getFiltered(): " . mysqli_error($conn));
-
-        // Mapear resultados a objetos Patient
-        $patients = [];
-        while ($row = mysqli_fetch_object($result, 'Patient')) {
-            $patients[] = $row;
-        }
-        return $patients;
-    }
+    $query = Executor::doit($sql);
+    return Model::many($query[0], new PatientData());
+}
 
 }
