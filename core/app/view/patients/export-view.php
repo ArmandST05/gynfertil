@@ -1,12 +1,9 @@
 <?php
 $user = UserData::getLoggedIn();
 $userType = (isset($user)) ? $user->user_type : null;
-$branchOfficeId = isset($_GET['branchOfficeId']) ? $_GET['branchOfficeId'] : 0;
-$categoryId = isset($_GET['categoryId']) ? $_GET['categoryId'] : 'all';
-$companyId = isset($_GET['companyId']) ? $_GET['companyId'] : 'all';
 $categories = PatientData::getAllCategories();
 $companies = CompanyData::getAll();
-
+$medics = MedicData::getAll();
 if ($userType == "r") {
 	$branchOfficeId = $user->getBranchOffice()->id;
 	$branchOffices = [$user->getBranchOffice()];
@@ -22,153 +19,171 @@ if ($branchOfficeId) {
 	$medics = MedicData::getAllByBranchOffice($branchOfficeId);
 }
 
-$medicId = (isset($_GET["medicId"])) ? $_GET["medicId"] : 0;
-$categoryId = (isset($_GET["categoryId"])) ? $_GET["categoryId"] : "all";
-$companyId = (isset($_GET["companyId"])) ? $_GET["companyId"] : "all";
-$patients = PatientData::getAllExport();
-
-function applyFilters($patients, $branchOfficeId, $medicId, $categoryId, $companyId) {
-    return array_filter($patients, function($patient) use ($branchOfficeId, $medicId, $categoryId, $companyId) {
-        if ($branchOfficeId != 0 && $patient->branch_office_id != $branchOfficeId) {
-            return false;
-        }
-        if ($medicId != 0) {
-            if (empty($patient->medic_id) || $patient->medic_id != $medicId) {
-                return false;
-            }
-        }
-        if ($categoryId !== 'all') {
-            if ($categoryId === 'active') {
-                if (!in_array($patient->category_id, [1, 4])) {
-                    return false;
-                }
-            } else {
-                if ($patient->category_id != $categoryId) {
-                    return false;
-                }
-            }
-        }
-        if ($companyId !== 'all') {
-            if ($companyId === 'company') {
-                if (empty($patient->company_id)) return false;
-            } elseif ($companyId === 'withoutCompany') {
-                if (!empty($patient->company_id)) return false;
-            } else {
-                if ($patient->company_id != $companyId) return false;
-            }
-        }
-        return true;
-    });
-}
-
-$filteredPatients = applyFilters($patients, $branchOfficeId, $medicId, $categoryId, $companyId);
 ?>
-<form method="GET" action="">
-    <div class="row">
-        <div class="col-md-3">
-            <label class="control-label">Sucursal:</label>
-            <select name="branchOfficeId" class="form-control" required>
-                <?php if ($userType == "su" || $userType == "co") : ?>
-                    <option value="0">-- TODAS --</option>
-                <?php endif; ?>
-                <?php foreach ($branchOffices as $branchOffice) : ?>
-                    <option value="<?php echo $branchOffice->id; ?>" <?php echo ($branchOfficeId == $branchOffice->id) ? "selected" : "" ?>><?php echo $branchOffice->name; ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label class="control-label">Psicólogo:</label>
-            <div class="form-group">
-                <select name="medicId" class="form-control" required>
-                    <option value="0">-- TODOS --</option>
-                    <?php foreach ($medics as $medic) : ?>
-                        <option value="<?php echo $medic->id; ?>" <?php echo ($medicId == $medic->id) ? "selected" : "" ?>><?php echo $medic->name; ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <label class="control-label">Categoría:</label>
-            <div class="form-group">
-                <select name="categoryId" class="form-control" required>
-                    <option value="all" <?php echo ($categoryId == "all") ? "selected" : "" ?>>-- TODOS --</option>
-                    <option value="active" <?php echo ($categoryId == "active") ? "selected" : "" ?>>ACTIVOS</option>
-                    <option value="1" <?php echo ($categoryId == 1) ? "selected" : "" ?>>ACTIVO (NO REINGRESO)</option>
-                    <option value="4" <?php echo ($categoryId == 4) ? "selected" : "" ?>>ACTIVO (REINGRESO)</option>
-                    <option value="2" <?php echo ($categoryId == 2) ? "selected" : "" ?>>ALTA</option>
-                    <option value="3" <?php echo ($categoryId == 3) ? "selected" : "" ?>>INACTIVO</option>
-                </select>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <label class="control-label">Empresa:</label>
-            <div class="form-group">
-                <select name="companyId" class="form-control" required>
-                    <option value="all" <?php echo ($companyId == "all") ? "selected" : "" ?>>-- TODOS --</option>
-                    <option value="company" <?php echo ($companyId == "company") ? "selected" : "" ?>>SON DE EMPRESA</option>
-                    <option value="withoutCompany" <?php echo ($companyId == "withoutCompany") ? "selected" : "" ?>>NO SON DE EMPRESA</option>
-                    <?php foreach ($companies as $company) : ?>
-                        <option value="<?php echo $company->id ?>" <?php echo ($companyId == $company->id) ? "selected" : "" ?>><?php echo $company->name ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-2">
-            <br>
-<button type="submit" class="btn btn-sm btn-primary btn-block">Buscar</button>
-        </div>
-    </div>
-</form>
+<div class="card" style="width:100%; margin-top:20px">
+  <div class="card-body">
+    <div class="row mb-3">
 
-<div class="row">
-    <div class="col-md-12">
-        <h1>Pacientes (Vista general)</h1>
-        <table class="table table-bordered table-hover">
-            <thead class="bg-light" align="center">
-                <tr>
-                    <th>Clave</th>
-                    <th>Nombre completo</th>
-                    <th>Dirección</th>
-                    <th>Teléfonos</th>
-                    <th>Email</th>
-                    <th>Familiar</th>
-                    <th>Psicólogo</th>
-                    <th>Empresa</th>
-                    <th>Categoría</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($filteredPatients as $patient): ?>
-                    <tr>
-                        <td><?php echo $patient->patient_id; ?></td>
-                        <td><?php echo $patient->patient_name; ?></td>
-                        <td>
-                            <?php
-                                $direccion = "{$patient->street} {$patient->number}, {$patient->colony}";
-                                if (!empty($patient->county_name)) {
-                                    $direccion .= ", {$patient->county_name}";
-                                }
-                                echo $direccion;
-                            ?>
-                        </td>
-                        <td>
-                            <?php
-                                $telefonos = [];
-                                if ($patient->cellphone) $telefonos[] = $patient->cellphone;
-                                if ($patient->homephone) $telefonos[] = $patient->homephone;
-                                echo implode(" / ", $telefonos);
-                            ?>
-                        </td>
-                        <td><?php echo $patient->email; ?></td>
-                        <td><?php echo $patient->relative_name; ?></td>
-                        <td><?php echo $patient->medic_name ?? 'Sin asignar'; ?></td>
-                        <td><?php echo $patient->company_name ?? 'Sin empresa'; ?></td>
-                        <td><?php echo $patient->patient_category_name; ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+      <!-- Filtro por sucursal -->
+      <div class="col-md-4">
+        <label for="filter-branch-office">Sucursal:</label>
+        <select id="filter-branch-office" name="branchOfficeId" class="form-control">
+          <?php if ($userType == "r" || $userType == "co"): ?>
+            <option value="<?= $branchOfficeId ?>"><?= htmlspecialchars($user->getBranchOffice()->name) ?></option>
+          <?php else: ?>
+            <option value="">Todas</option>
+            <?php foreach ($branchOffices as $b): ?>
+              <option value="<?= $b->id ?>" <?= ($branchOfficeId == $b->id ? 'selected' : '') ?>>
+                <?= htmlspecialchars($b->name) ?>
+              </option>
+            <?php endforeach; ?>
+          <?php endif; ?>
+        </select>
+      </div>
+
+      <!-- Filtro por médico -->
+      <div class="col-md-4">
+        <label for="filter-medic">Médico:</label>
+        <select id="filter-medic" name="medicId" class="form-control">
+          <option value="">Todos</option>
+          <?php foreach ($medics as $m): ?>
+            <option value="<?= $m->id ?>"><?= htmlspecialchars($m->name) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <!-- Filtro por categoría -->
+      <div class="col-md-4">
+        <label for="filter-category">Categoría:</label>
+        <select id="filter-category" name="categoryId" class="form-control">
+          <option value="">Todas</option>
+          <?php foreach ($categories as $c): ?>
+            <option value="<?= $c->id ?>"><?= htmlspecialchars($c->name) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <!-- Filtro por empresa -->
+      <div class="col-md-4 mt-3">
+        <label for="filter-company">Empresa:</label>
+        <select id="filter-company" name="companyId" class="form-control">
+          <option value="">Todas</option>
+          <?php foreach ($companies as $comp): ?>
+            <option value="<?= $comp->id ?>"><?= htmlspecialchars($comp->name) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+
+
+<table id="patients-table" class="display nowrap" style="width:100%">
+<thead>
+  <tr>
+    <th>ID</th>
+    <th>Nombre</th>
+    <th>Sucursal</th>
+    <th>Tratamiento</th>
+    <th>Precio</th>        <!-- ✅ nuevo -->
+    <th>Calle</th>         <!-- ✅ nuevo -->
+    <th>Número</th>        <!-- ✅ nuevo -->
+    <th>Colonia</th>
+    <th>Municipio</th>
+    <th>Cumpleaños</th>
+    <th>Edad</th>
+    <th>Sexo</th>
+    <th>Celular</th>
+    <th>Estatus</th>
+    <th>Inicio</th>
+    <th>Psicologo</th>
+    <th>Motivo consulta</th>
+    <th>Nivel educativo</th>
+  
+  </tr>
+</thead>
+
+</table>
+
+
     </div>
+  </div>
 </div>
+<script>
+var dataTable;
+
+$(document).ready(function () {
+  dataTable = $('#patients-table').DataTable({
+    language: {
+      sProcessing: "Procesando...",
+      sZeroRecords: "No se encontraron resultados",
+      sEmptyTable: "Ningún dato disponible en esta tabla",
+      sInfo: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+      sInfoFiltered: "(filtrado de _MAX_ registros totales)",
+      sLoadingRecords: "Cargando...",
+      oPaginate: {
+        sFirst: "Primero",
+        sLast: "Último",
+        sNext: "Siguiente",
+        sPrevious: "Anterior"
+      }
+    },
+    processing: true,
+    serverSide: true,
+    ordering: false,
+    responsive: true,
+    scrollX: true,
+    dom: '<"datatable-content"t><"datatable-footer"ip>',
+pageLength: 5000,  // Muestra 20 por página
+lengthMenu: [[20, 50, 100, -1], [20, 50, 100, "Todos"]],  // Opciones para el usuario
+
+
+   ajax: {
+  url: './?action=patients/get-filter',
+  type: 'POST',
+  dataType: 'json',
+  data: function (d) {
+    d.categoryId = $('#filter-category').val();
+    d.companyId = $('#filter-company').val();
+    d.branchOfficeId = $('#filter-branch-office').val();
+  }
+},
+columns: [
+  { data: 0 },  // ID paciente
+  { data: 1 },  // Nombre
+  { data: 2 },  // Sucursal
+  { data: 3 },  // Tratamiento
+  { data: 4 },  // Precio
+  { data: 5 },  // Calle
+  { data: 6 },  // Número
+  { data: 7 },  // Colonia
+  { data: 8 },  // Municipio
+  { data: 9 },  // Cumpleaños
+  { data: 10 }, // Edad
+  { data: 11 }, // Sexo
+  { data: 12 }, // Celular
+  { data: 13 }, // Estatus
+  { data: 14 }, // Inicio
+  { data: 15 }, // Médico actual
+  { data: 16 }, // Motivo
+  { data: 17 }, // Escolaridad
+ // { data: 18 }, // Ocupación
+ // { data: 19 }, // Médico anterior 1
+  //{ data: 20 }, // Médico anterior 2
+  //{ data: 21 },  // Fin ✅
+  //{ data: 22 },
+ // { data: 23 },
+ // { data: 24 },
+  //{ data: 25 },
+ // { data: 26}
+]
+
+  });
+
+  $('#filter-category, #filter-branch-office, #filter-medic, filter-company').on('change keyup', function () {
+    dataTable.ajax.reload();
+  });
+});
+
+
+
+
+</script>
