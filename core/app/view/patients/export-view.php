@@ -31,6 +31,7 @@ if ($branchOfficeId) {
           <?php if ($userType == "r" || $userType == "co"): ?>
             <option value="<?= $branchOfficeId ?>"><?= htmlspecialchars($user->getBranchOffice()->name) ?></option>
           <?php else: ?>
+            <option value="1">Selecciona un filtro</option>
             <option value="">Todas</option>
             <?php foreach ($branchOffices as $b): ?>
               <option value="<?= $b->id ?>" <?= ($branchOfficeId == $b->id ? 'selected' : '') ?>>
@@ -45,6 +46,7 @@ if ($branchOfficeId) {
       <div class="col-md-3">
         <label for="filter-medic">Médico:</label>
         <select id="filter-medic" name="medicId" class="form-control">
+          <option value="1">Selecciona un filtro</option>
           <option value="">Todos</option>
           <?php foreach ($medics as $m): ?>
             <option value="<?= $m->id ?>"><?= htmlspecialchars($m->name) ?></option>
@@ -56,6 +58,7 @@ if ($branchOfficeId) {
       <div class="col-md-3">
         <label for="filter-category">Categoría:</label>
         <select id="filter-category" name="categoryId" class="form-control">
+          <option value="1">Selecciona un filtro</option>
           <option value="">Todas</option>
           <?php foreach ($categories as $c): ?>
             <option value="<?= $c->id ?>"><?= htmlspecialchars($c->name) ?></option>
@@ -67,6 +70,7 @@ if ($branchOfficeId) {
       <div class="col-md-3">
         <label for="filter-company">Empresa:</label>
         <select id="filter-company" name="companyId" class="form-control">
+          <option value="1">Selecciona un filtro</option>
           <option value="">Todas</option>
           <?php foreach ($companies as $comp): ?>
             <option value="<?= $comp->id ?>"><?= htmlspecialchars($comp->name) ?></option>
@@ -78,43 +82,45 @@ if ($branchOfficeId) {
   </div>
 </div>
 
+  <button id="btn-export-excel" class="btn btn-success">Exportar a Excel</button>
 
 <table id="patients-table" class="display nowrap" style="width:100%">
-<thead>
-  <tr>
-    <th>ID</th>
-    <th>Nombre</th>
-    <th>Sucursal</th>
-    <th>Tratamiento</th>
-    <th>Precio</th>
-    <th>Calle</th>
-    <th>Número</th>
-    <th>Colonia</th>
-    <th>Municipio</th>
-    <th>Cumpleaños</th>
-    <th>Edad</th>
-    <th>Sexo</th>
-    <th>Celular</th>
-    <th>Estatus</th>
-    <th>Inicio</th>
-    <th>Psicólogo</th>
-    <th>Motivo consulta</th>
-    <th>Nivel educativo</th>
-    <th>Ocupación</th>             <!-- data[18] -->
-    <th>Psicólogo anterior 1</th>  <!-- data[19] -->
-    <th>Psicólogo anterior 2</th>  <!-- data[20] -->
-    <th>Fin</th>                   <!-- data[21] -->
-    <th>Motivo cancelación</th>   <!-- data[22] -->
-    <th>Duración</th>             <!-- data[23] -->
-    <th>Total sesiones</th>       <!-- data[24] -->
-    <th>Última nota</th>          <!-- data[25] -->
-    <th>Empresa</th>              <!-- data[26] -->
-    <th>Observaciones</th>        <!-- data[27] -->
-  </tr>
-</thead>
-
-
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Nombre</th>
+      <th>Sucursal</th>
+      <th>Tratamiento</th>
+      <th>Precio</th>
+      <th>Calle</th>
+      <th>Número</th>
+      <th>Colonia</th>
+      <th>Municipio</th>
+      <th>Cumpleaños</th>
+      <th>Edad</th>
+      <th>Sexo</th>
+      <th>Celular</th>
+      <th>Estatus</th>
+      <th>Inicio</th>
+      <th>Psicólogo</th>
+      <th>Motivo consulta</th>
+      <th>Nivel educativo</th>
+      <th>Ocupación</th>
+      <th>Psicólogo anterior 1</th>
+      <th>Psicólogo anterior 2</th>
+      <th>Fin</th>
+      <th>Motivo cancelación</th>
+      <th>Duración</th>
+      <th>Total sesiones</th>
+      <th>Última nota</th>
+      <th>Empresa</th>
+      <th>Observaciones</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
 </table>
+
+
 
 
     </div>
@@ -136,65 +142,108 @@ if ($branchOfficeId) {
 ">
   Cargando datos...
 </div>
-<script>
-var dataTable;
-$(document).ready(function () {
-  dataTable = $('#patients-table').DataTable({
-    language: {
-      sProcessing: "Procesando...",
-      sZeroRecords: "No se encontraron resultados",
-      sEmptyTable: "Ningún dato disponible en esta tabla",
-      sInfo: "Mostrando _START_ a _END_ de _TOTAL_ registros",
-      sInfoFiltered: "(filtrado de _MAX_ registros totales)",
-      sLoadingRecords: "Cargando...",
-      oPaginate: {
-        sFirst: "Primero",
-        sLast: "Último",
-        sNext: "Siguiente",
-        sPrevious: "Anterior"
-      }
-    },
-    processing: true,
-    serverSide: true,
-    ordering: false,
-    responsive: true,
-    scrollX: true,
-    dom: '<"datatable-content"t><"datatable-footer"ip>',
-    pageLength: 50,
-    lengthMenu: [[20, 50, 100, -1], [20, 50, 100, "Todos"]],
-    ajax: {
-      url: './?action=patients/get-filter',
-      type: 'POST',
-      dataType: 'json',
-      data: function (d) {
-        d.branchOfficeId = $('#filter-branch-office').val();
-        d.medicId = $('#filter-medic').val();
-        d.categoryId = $('#filter-category').val();
-        d.companyId = $('#filter-company').val();
-      },
-      beforeSend: function () {
-        $('#loading-overlay').show();
-      },
-      complete: function () {
-        $('#loading-overlay').hide();
-      }
-    },
-    columns: [
-      { data: 0 }, { data: 1 }, { data: 2 }, { data: 3 }, { data: 4 },
-      { data: 5 }, { data: 6 }, { data: 7 }, { data: 8 }, { data: 9 },
-      { data: 10 }, { data: 11 }, { data: 12 }, { data: 13 }, { data: 14 },
-      { data: 15 }, { data: 16 }, { data: 17 }, { data: 18 }, { data: 19 },
-      { data: 20 }, { data: 21 }, { data: 22 }, { data: 23 }, { data: 24 },
-      { data: 25 }, { data: 26 }, { data: 27 }
-    ]
-  });
+<!-- Asegúrate de tener este script incluido en tu HTML -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  $('#filter-branch-office, #filter-medic, #filter-category, #filter-company').on('change', function () {
-    dataTable.ajax.reload();
+<script>
+// Asegúrate de que DataTables y sus dependencias están correctamente cargadas en tu servidor
+// Incluye jQuery, DataTables, y opcionalmente los plugins de botones si deseas exportar
+
+let dataTable;
+
+function cargarPacientes() {
+  const filters = {
+    branchOfficeId: $('#filter-branch-office').val(),
+    medicId: $('#filter-medic').val(),
+    categoryId: $('#filter-category').val(),
+    companyId: $('#filter-company').val()
+  };
+
+  $.ajax({
+    url: './?action=patients/get-filter',
+    method: 'POST',
+    data: filters,
+    dataType: 'json',
+    beforeSend: function () {
+      $('#loading-overlay').show();
+    },
+    success: function (response) {
+      const datos = Array.isArray(response.data) ? response.data : [];
+
+      if ($.fn.dataTable.isDataTable('#patients-table')) {
+        dataTable.clear().rows.add(datos).draw();
+      } else {
+        dataTable = $('#patients-table').DataTable({
+          data: datos,
+          pageLength: 20,
+          responsive: true,
+          scrollX: true,
+          ordering: false,
+          language: {
+            sProcessing: "Procesando...",
+            sZeroRecords: "No se encontraron resultados",
+            sEmptyTable: "Ningún dato disponible en esta tabla",
+            sInfo: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+            sInfoFiltered: "(filtrado de _MAX_ registros totales)",
+            sLoadingRecords: "Cargando...",
+            oPaginate: {
+              sFirst: "Primero",
+              sLast: "Último",
+              sNext: "Siguiente",
+              sPrevious: "Anterior"
+            }
+          },
+          dom: 'Bfrtip',
+          buttons: [
+            {
+              text: 'Exportar a Excel',
+              action: function () {
+                exportarExcel(datos);
+              }
+            }
+          ]
+        });
+      }
+    },
+    error: function () {
+      $('#patients-table tbody').html('<tr><td colspan="28" class="text-center">Error al obtener los datos</td></tr>');
+    },
+    complete: function () {
+      $('#loading-overlay').hide();
+    }
   });
+}
+
+function exportarExcel(data) {
+  const ws = XLSX.utils.aoa_to_sheet([
+    [
+      'ID', 'Nombre', 'Sucursal', 'Tratamiento', 'Precio', 'Calle', 'Número', 'Colonia',
+      'Municipio', 'Cumpleaños', 'Edad', 'Sexo', 'Celular', 'Estatus', 'Inicio', 'Psicólogo',
+      'Motivo consulta', 'Nivel educativo', 'Ocupación', 'Psicólogo anterior 1', 'Psicólogo anterior 2',
+      'Fin', 'Motivo cancelación', 'Duración', 'Total sesiones', 'Ultima nota', 'Empresa', 'Observaciones'
+    ],
+    ...data
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pacientes');
+  XLSX.writeFile(wb, 'PacientesFiltrados.xlsx');
+}
+
+$('#filter-branch-office, #filter-medic, #filter-category, #filter-company').on('change', function () {
+  cargarPacientes();
 });
 
-
-
+$(document).ready(function () {
+  cargarPacientes();
+});
+$('#btn-export-excel').on('click', function () {
+  if (dataTable) {
+    const allData = dataTable.rows().data().toArray();
+    exportarExcel(allData);
+  } else {
+    alert('No hay datos para exportar.');
+  }
+});
 
 </script>
+
