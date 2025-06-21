@@ -115,6 +115,7 @@ if ($branchOfficeId) {
       <th>Última nota</th>
       <th>Empresa</th>
       <th>Observaciones</th>
+      <th>Psiquiatra</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -220,7 +221,7 @@ function exportarExcel(data) {
       'ID', 'Nombre', 'Sucursal', 'Tratamiento', 'Precio', 'Calle', 'Número', 'Colonia',
       'Municipio', 'Cumpleaños', 'Edad', 'Sexo', 'Celular', 'Estatus', 'Inicio', 'Psicólogo',
       'Motivo consulta', 'Nivel educativo', 'Ocupación', 'Psicólogo anterior 1', 'Psicólogo anterior 2',
-      'Fin', 'Motivo cancelación', 'Duración', 'Total sesiones', 'Ultima nota', 'Empresa', 'Observaciones'
+      'Fin', 'Motivo Baja', 'Duración', 'Total sesiones', 'Ultima nota', 'Empresa', 'Observaciones', 'Psiquiatra'
     ],
     ...data
   ]);

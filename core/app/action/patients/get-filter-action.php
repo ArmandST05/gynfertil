@@ -60,6 +60,7 @@ $sql = "SELECT
     treatment_status.name AS status_name,
     patient_treatments.reason,
     patient_treatments.cancellation_reason,
+    patient_treatments.psychiatrist,
     patient_treatments.last_note,
     education_levels.name AS level_education,
     DATE_FORMAT(patient_treatments.start_date, '%d/%m/%Y') AS start_date,
@@ -122,7 +123,8 @@ while ($p = $query->fetch_object()) {
         $p->total_sessions,
         $p->last_note,
         $p->company_name,
-        $p->observations
+        $p->observations,
+        $p->psychiatrist
     ];
 }
 
